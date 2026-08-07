@@ -4,8 +4,9 @@
 <script type="module">
   // 后续 Task 会在此逐个 import '../js/*.test.js'（若拆分）或直接内联用例。
   // 本计划将各引擎单测直接写入本文件的 module script 中。
-  import { test, assertEqual, runAll } from './assert.js';
+  import { test, assertEqual, assertThrows, runAll } from './assert.js';
   import { formatNumber } from '../js/formatter.js';
+  import { lex, TOKEN_TYPES as T } from '../js/lexer.js';
 
   test('formatNumber 清理浮点毛刺', () => assertEqual(formatNumber(0.1 + 0.2), '0.3'));
   test('formatNumber 整数', () => assertEqual(formatNumber(1024), '1024'));
@@ -14,6 +15,32 @@
   test('formatNumber 大数科学计数', () => assertEqual(formatNumber(1e15), '1e+15'));
   test('formatNumber 小数科学计数', () => assertEqual(formatNumber(0.0000000001), '1e-10'));
   test('formatNumber 12位有效数字', () => assertEqual(formatNumber(1/3), '0.333333333333'));
+
+  const types = (atoms) => lex(atoms).map(t => t.type);
+
+  test('lex 基本数字与运算', () => {
+    const t = lex(['2', '+', '3']);
+    assertEqual(t.length, 3);
+    assertEqual(t[0].type, T.NUM); assertEqual(t[0].value, 2);
+    assertEqual(t[1].type, T.OP);  assertEqual(t[1].value, '+');
+  });
+  test('lex 函数展开为 FUNC+LPAREN', () => {
+    const t = lex(['sin(', '30', ')']);
+    assertEqual(t[0].type, T.FUNC); assertEqual(t[0].value, 'sin');
+    assertEqual(t[1].type, T.LPAREN);
+    assertEqual(t[2].type, T.NUM);
+    assertEqual(t[3].type, T.RPAREN);
+  });
+  test('lex 隐式乘法 数字接常量', () => {
+    assertEqual(types(['2', 'pi']).join(','), [T.NUM, T.OP, T.CONST].join(','));
+  });
+  test('lex 隐式乘法 括号接括号', () => {
+    assertEqual(types([')', '(']).join(','), [T.RPAREN, T.OP, T.LPAREN].join(','));
+  });
+  test('lex 隐式乘法 数字接函数', () => {
+    assertEqual(types(['2', 'sin(']).join(','), [T.NUM, T.OP, T.FUNC, T.LPAREN].join(','));
+  });
+  test('lex 未知原子报错', () => assertThrows(() => lex(['@']), 'Syntax Error'));
 
   runAll();
 </script>
