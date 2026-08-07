@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Calculator</title>
+</head>
+<body>
+  <div id="calc">
+    <header id="statusbar">
+      <span id="badge" class="badge">DEG</span>
+    </header>
+
+    <section id="display">
+      <div id="expr" aria-label="expression"></div>
+      <div id="result"></div>
+    </section>
+
+    <div id="history-panel" hidden>
+      <div class="history-head">
+        <span>History</span>
+        <button id="history-close" type="button">✕</button>
+      </div>
+      <ul id="history-list"></ul>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <section id="keypad">
+      <!-- 功能行 1 -->
+      <button class="key fn shift" data-id="shift" type="button">Shift</button>
+      <button class="key fn" data-id="redo" type="button">↷</button>
+      <button class="key fn" data-id="mathUp" data-placeholder type="button">∧</button>
+      <button class="key fn" data-id="undo" type="button">↶</button>
+      <button class="key fn danger" data-id="back" type="button">⌫</button>
+      <!-- 功能行 2 -->
+      <button class="key fn danger" data-id="ac" type="button">AC</button>
+      <button class="key fn" data-id="left" type="button">‹</button>
+      <button class="key fn" data-id="math" data-placeholder type="button">MATH</button>
+      <button class="key fn" data-id="right" type="button">›</button>
+      <button class="key fn" data-id="history" type="button">↺</button>
+      <!-- 功能行 3 -->
+      <button class="key fn" data-id="fxs" data-placeholder type="button">FXs</button>
+      <button class="key fn" data-id="grp" data-placeholder type="button">GRP</button>
+      <button class="key fn" data-id="mathDown" data-placeholder type="button">∨</button>
+      <button class="key fn" data-id="comma" data-placeholder type="button">, ,</button>
+      <button class="key fn" data-id="sto" type="button">STO</button>
+      <!-- 科学函数行 1 -->
+      <button class="key sci" data-id="pi" type="button">π</button>
+      <button class="key sci" data-id="ln" type="button">Ln</button>
+      <button class="key sci" data-id="sin" type="button">Sin</button>
+      <button class="key sci" data-id="cos" type="button">Cos</button>
+      <button class="key sci" data-id="tan" type="button">Tan</button>
+      <!-- 科学函数行 2 -->
+      <button class="key sci" data-id="varX" type="button">X</button>
+      <button class="key sci" data-id="square" type="button">X²</button>
+      <button class="key sci" data-id="sqrt" type="button">√</button>
+      <button class="key sci" data-id="lparen" type="button">(</button>
+      <button class="key sci" data-id="rparen" type="button">)</button>
+      <!-- 数字区 -->
+      <button class="key num" data-id="7" type="button">7</button>
+      <button class="key num" data-id="8" type="button">8</button>
+      <button class="key num" data-id="9" type="button">9</button>
+      <button class="key op" data-id="mul" type="button">×</button>
+      <button class="key op" data-id="div" type="button">÷</button>
+
+      <button class="key num" data-id="4" type="button">4</button>
+      <button class="key num" data-id="5" type="button">5</button>
+      <button class="key num" data-id="6" type="button">6</button>
+      <button class="key op" data-id="add" type="button">+</button>
+      <button class="key op" data-id="sub" type="button">−</button>
+
+      <button class="key num" data-id="1" type="button">1</button>
+      <button class="key num" data-id="2" type="button">2</button>
+      <button class="key num" data-id="3" type="button">3</button>
+      <button class="key num" data-id="ans" type="button">Ans</button>
+      <button class="key equals" data-id="equals" type="button" style="grid-row: span 2;">=</button>
+
+      <button class="key num" data-id="0" type="button">0</button>
+      <button class="key num" data-id="dot" type="button">.</button>
+      <button class="key sci" data-id="eex" type="button">EE</button>
+      <button class="key sci" data-id="pow" type="button">xⁿ</button>
+    </section>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+    }
+  </script>
+</body>
+</html>
