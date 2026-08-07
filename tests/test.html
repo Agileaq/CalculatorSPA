@@ -13,6 +13,7 @@
   import { Editor } from '../js/tokens.js';
   import { Store } from '../js/history.js';
   import { AppState } from '../js/state.js';
+  import { ACTIONS, KEYBOARD } from '../js/keymap.js';
 
   function memStorage() {
     const m = {};
@@ -196,6 +197,26 @@
   test('ans 读写', () => {
     const s = new AppState(); s.ans = 42;
     assertEqual(s.ans, 42);
+  });
+
+  test('数字键动作', () => {
+    assertEqual(ACTIONS['7'].kind, 'digit');
+    assertEqual(ACTIONS['7'].payload, '7');
+  });
+  test('运算符动作', () => {
+    assertEqual(ACTIONS.mul.kind, 'atom');
+    assertEqual(ACTIONS.mul.payload, '*');
+  });
+  test('函数作为原子', () => {
+    assertEqual(ACTIONS.sin.payload, 'sin(');
+  });
+  test('占位键', () => {
+    assertEqual(ACTIONS.math.kind, 'placeholder');
+  });
+  test('物理键映射', () => {
+    assertEqual(KEYBOARD['Enter'], 'equals');
+    assertEqual(KEYBOARD['Backspace'], 'back');
+    assertEqual(KEYBOARD['*'], 'mul');
   });
 
   runAll();
