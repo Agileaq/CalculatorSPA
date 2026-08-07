@@ -693,12 +693,12 @@ test('backspace 删整个原子', () => {
   e.insertDigit('2'); e.insertAtom('+'); e.backspace();
   assertEqual(e.atoms.join(','), '2');
 });
-test('光标中间插入', () => {
+test('光标中间插入数字并入左侧数字', () => {
   const e = new Editor();
   e.insertDigit('2'); e.insertAtom('+'); e.insertDigit('3');
   e.moveLeft(); e.moveLeft(); // 光标在 + 之前
   e.insertDigit('9');
-  assertEqual(e.atoms.join(','), '2,9,+,3');
+  assertEqual(e.atoms.join(','), '29,+,3'); // 9 并入左侧数字原子 '2'
 });
 test('undo/redo', () => {
   const e = new Editor();
