@@ -7,6 +7,7 @@
   import { test, assertEqual, assertThrows, runAll } from './assert.js';
   import { formatNumber } from '../js/formatter.js';
   import { lex, TOKEN_TYPES as T } from '../js/lexer.js';
+  import { parse } from '../js/parser.js';
 
   test('formatNumber 清理浮点毛刺', () => assertEqual(formatNumber(0.1 + 0.2), '0.3'));
   test('formatNumber 整数', () => assertEqual(formatNumber(1024), '1024'));
@@ -41,6 +42,32 @@
     assertEqual(types(['2', 'sin(']).join(','), [T.NUM, T.OP, T.FUNC, T.LPAREN].join(','));
   });
   test('lex 未知原子报错', () => assertThrows(() => lex(['@']), 'Syntax Error'));
+
+  const ast = (atoms) => parse(lex(atoms));
+
+  test('parse 加法节点', () => {
+    const a = ast(['2', '+', '3']);
+    assertEqual(a.kind, 'binary'); assertEqual(a.op, '+');
+    assertEqual(a.left.value, 2); assertEqual(a.right.value, 3);
+  });
+  test('parse 优先级 乘先于加', () => {
+    const a = ast(['2', '+', '3', '*', '4']);
+    assertEqual(a.op, '+'); assertEqual(a.right.op, '*');
+  });
+  test('parse ^ 右结合', () => {
+    const a = ast(['2', '^', '3', '^', '2']); // 2^(3^2)
+    assertEqual(a.op, '^'); assertEqual(a.right.op, '^');
+  });
+  test('parse 一元负号', () => {
+    const a = ast(['-', '5']);
+    assertEqual(a.kind, 'unary'); assertEqual(a.operand.value, 5);
+  });
+  test('parse 函数调用', () => {
+    const a = ast(['sin(', '30', ')']);
+    assertEqual(a.kind, 'call'); assertEqual(a.name, 'sin'); assertEqual(a.arg.value, 30);
+  });
+  test('parse 括号不匹配报错', () => assertThrows(() => ast(['(', '2']), 'Syntax Error'));
+  test('parse 空输入报错', () => assertThrows(() => parse([]), 'Syntax Error'));
 
   runAll();
 </script>
