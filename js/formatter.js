@@ -11,8 +11,10 @@ export function formatNumber(n) {
   // 常规：先按 12 位有效数字定形，再解析回数字去毛刺与末尾零
   const rounded = Number(n.toPrecision(12));
   let s = String(rounded);
-  if (s.includes('e')) {                // toPrecision 边界可能仍产生指数
-    s = rounded.toExponential(11).replace(/\.?0+e/, 'e');
+  if (s.includes('e')) {                // String() 对 |n|<1e-6 会用指数，需展开为普通小数
+    const k = Math.floor(Math.log10(Math.abs(rounded)));
+    const digits = Math.min(100, 11 - k); // 保留到第 12 位有效数字
+    s = rounded.toFixed(digits).replace(/\.?0+$/, '');
   }
   return s;
 }
