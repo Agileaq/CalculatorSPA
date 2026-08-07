@@ -4,6 +4,7 @@
   --blue: #0a84ff; --equals: #2a2a2c;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
 html, body { height: 100%; background: var(--bg); color: var(--text);
   font-family: -apple-system, system-ui, sans-serif; overflow: hidden; }
 #calc { display: flex; flex-direction: column; height: 100vh;
