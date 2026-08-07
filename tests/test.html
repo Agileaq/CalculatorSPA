@@ -11,6 +11,16 @@
   import { evaluate, CalcError } from '../js/evaluator.js';
   import { evaluate as engineEval } from '../js/engine.js';
   import { Editor } from '../js/tokens.js';
+  import { Store } from '../js/history.js';
+
+  function memStorage() {
+    const m = {};
+    return {
+      getItem: (k) => (k in m ? m[k] : null),
+      setItem: (k, v) => { m[k] = String(v); },
+      removeItem: (k) => { delete m[k]; },
+    };
+  }
 
   test('formatNumber 清理浮点毛刺', () => assertEqual(formatNumber(0.1 + 0.2), '0.3'));
   test('formatNumber 整数', () => assertEqual(formatNumber(1024), '1024'));
@@ -142,6 +152,34 @@
     assertEqual(e.atoms.length, 0);
     e.undo();
     assertEqual(e.atoms.join(','), '5');
+  });
+
+  test('addHistory 最新在前', () => {
+    const s = new Store(memStorage());
+    s.addHistory(['1', '+', '1'], '2');
+    s.addHistory(['2', '*', '2'], '4');
+    assertEqual(s.history[0].display, '4');
+    assertEqual(s.history[1].display, '2');
+  });
+  test('变量读写', () => {
+    const s = new Store(memStorage());
+    s.setVar('A', 42);
+    assertEqual(s.getVar('A'), 42);
+    assertEqual(s.vars.A, 42);
+  });
+  test('持久化跨实例', () => {
+    const mem = memStorage();
+    const s1 = new Store(mem);
+    s1.setVar('B', 7); s1.addHistory(['B'], '7');
+    const s2 = new Store(mem);
+    assertEqual(s2.getVar('B'), 7);
+    assertEqual(s2.history[0].display, '7');
+  });
+  test('历史上限 100', () => {
+    const s = new Store(memStorage());
+    for (let i = 0; i < 105; i++) s.addHistory([String(i)], String(i));
+    assertEqual(s.history.length, 100);
+    assertEqual(s.history[0].display, '104');
   });
 
   runAll();
