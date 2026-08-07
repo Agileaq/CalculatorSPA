@@ -9,6 +9,7 @@
   import { lex, TOKEN_TYPES as T } from '../js/lexer.js';
   import { parse } from '../js/parser.js';
   import { evaluate, CalcError } from '../js/evaluator.js';
+  import { evaluate as engineEval } from '../js/engine.js';
 
   test('formatNumber 清理浮点毛刺', () => assertEqual(formatNumber(0.1 + 0.2), '0.3'));
   test('formatNumber 整数', () => assertEqual(formatNumber(1024), '1024'));
@@ -84,6 +85,20 @@
   test('eval 除零 Math Error', () => assertThrows(() => ev(['1', '/', '0']), 'Math Error'));
   test('eval ln(0) Math Error', () => assertThrows(() => ev(['ln(', '0', ')']), 'Math Error'));
   test('eval sqrt(-1) Math Error', () => assertThrows(() => ev(['sqrt(', '-', '1', ')']), 'Math Error'));
+
+  const engineCtx = { angleMode: 'DEG', ans: 0, vars: {} };
+  test('engine 成功返回 display', () => {
+    const r = engineEval(['0.1', '+', '0.2'], engineCtx);
+    assertEqual(r.ok, true); assertEqual(r.display, '0.3');
+  });
+  test('engine 语法错误', () => {
+    const r = engineEval(['(', '2'], engineCtx);
+    assertEqual(r.ok, false); assertEqual(r.error, 'Syntax Error');
+  });
+  test('engine 数学错误', () => {
+    const r = engineEval(['1', '/', '0'], engineCtx);
+    assertEqual(r.ok, false); assertEqual(r.error, 'Math Error');
+  });
 
   runAll();
 </script>
