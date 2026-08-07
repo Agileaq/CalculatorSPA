@@ -4,10 +4,11 @@
 <script type="module">
   // 后续 Task 会在此逐个 import '../js/*.test.js'（若拆分）或直接内联用例。
   // 本计划将各引擎单测直接写入本文件的 module script 中。
-  import { test, assertEqual, assertThrows, runAll } from './assert.js';
+  import { test, assertEqual, assertClose, assertThrows, runAll } from './assert.js';
   import { formatNumber } from '../js/formatter.js';
   import { lex, TOKEN_TYPES as T } from '../js/lexer.js';
   import { parse } from '../js/parser.js';
+  import { evaluate, CalcError } from '../js/evaluator.js';
 
   test('formatNumber 清理浮点毛刺', () => assertEqual(formatNumber(0.1 + 0.2), '0.3'));
   test('formatNumber 整数', () => assertEqual(formatNumber(1024), '1024'));
@@ -68,6 +69,21 @@
   });
   test('parse 括号不匹配报错', () => assertThrows(() => ast(['(', '2']), 'Syntax Error'));
   test('parse 空输入报错', () => assertThrows(() => parse([]), 'Syntax Error'));
+
+  const ev = (atoms, ctx = {}) =>
+    evaluate(parse(lex(atoms)), { angleMode: 'DEG', ans: 0, vars: {}, ...ctx });
+
+  test('eval 加乘优先级', () => assertEqual(ev(['2', '+', '3', '*', '4']), 14));
+  test('eval 幂右结合', () => assertEqual(ev(['2', '^', '3', '^', '2']), 512));
+  test('eval sin(30) DEG', () => assertClose(ev(['sin(', '30', ')']), 0.5));
+  test('eval sin(pi/6) RAD', () => assertClose(ev(['sin(', 'pi', '/', '6', ')'], { angleMode: 'RAD' }), 0.5));
+  test('eval sqrt', () => assertEqual(ev(['sqrt(', '9', ')']), 3));
+  test('eval 百分比', () => assertEqual(ev(['50', '%']), 0.5));
+  test('eval Ans', () => assertEqual(ev(['Ans', '+', '1'], { ans: 41 }), 42));
+  test('eval 变量', () => assertEqual(ev(['A', '*', '2'], { vars: { A: 21 } }), 42));
+  test('eval 除零 Math Error', () => assertThrows(() => ev(['1', '/', '0']), 'Math Error'));
+  test('eval ln(0) Math Error', () => assertThrows(() => ev(['ln(', '0', ')']), 'Math Error'));
+  test('eval sqrt(-1) Math Error', () => assertThrows(() => ev(['sqrt(', '-', '1', ')']), 'Math Error'));
 
   runAll();
 </script>
