@@ -10,6 +10,7 @@
   import { parse } from '../js/parser.js';
   import { evaluate, CalcError } from '../js/evaluator.js';
   import { evaluate as engineEval } from '../js/engine.js';
+  import { Editor } from '../js/tokens.js';
 
   test('formatNumber 清理浮点毛刺', () => assertEqual(formatNumber(0.1 + 0.2), '0.3'));
   test('formatNumber 整数', () => assertEqual(formatNumber(1024), '1024'));
@@ -98,6 +99,49 @@
   test('engine 数学错误', () => {
     const r = engineEval(['1', '/', '0'], engineCtx);
     assertEqual(r.ok, false); assertEqual(r.error, 'Math Error');
+  });
+
+  test('insertDigit 合并数字', () => {
+    const e = new Editor();
+    e.insertDigit('3'); e.insertDigit('1');
+    assertEqual(e.atoms.join(','), '31');
+  });
+  test('insertAtom 与运算符分隔', () => {
+    const e = new Editor();
+    e.insertDigit('2'); e.insertAtom('+'); e.insertDigit('3');
+    assertEqual(e.atoms.join(','), '2,+,3');
+  });
+  test('backspace 删数字字符', () => {
+    const e = new Editor();
+    e.insertDigit('3'); e.insertDigit('1'); e.backspace();
+    assertEqual(e.atoms.join(','), '3');
+  });
+  test('backspace 删整个原子', () => {
+    const e = new Editor();
+    e.insertDigit('2'); e.insertAtom('+'); e.backspace();
+    assertEqual(e.atoms.join(','), '2');
+  });
+  test('光标中间插入', () => {
+    const e = new Editor();
+    e.insertDigit('2'); e.insertAtom('+'); e.insertDigit('3');
+    e.moveLeft(); e.moveLeft(); // 光标在 + 之前
+    e.insertDigit('9');
+    assertEqual(e.atoms.join(','), '2,9,+,3');
+  });
+  test('undo/redo', () => {
+    const e = new Editor();
+    e.insertDigit('2'); e.insertAtom('+');
+    e.undo();
+    assertEqual(e.atoms.join(','), '2');
+    e.redo();
+    assertEqual(e.atoms.join(','), '2,+');
+  });
+  test('clear 后可 undo', () => {
+    const e = new Editor();
+    e.insertDigit('5'); e.clear();
+    assertEqual(e.atoms.length, 0);
+    e.undo();
+    assertEqual(e.atoms.join(','), '5');
   });
 
   runAll();
