@@ -1006,6 +1006,7 @@ git commit -m "feat: add app state (angle mode, shift, ans)"
     - `pi` → `{kind:'atom', payload:'pi'}`；`percent` → `{kind:'atom', payload:'%'}`
     - `sin/cos/tan/ln/sqrt` → `{kind:'atom', payload:'sin('...}`（作为原子插入，lexer 认得）
     - `square` → 特殊：插入 `^` 再插入 `2` → 用 `{kind:'func', payload:'square'}`（app 展开）
+    - `eex` → 特殊：展开为 `×10^` → 用 `{kind:'func', payload:'eex'}`（app 插入 `*`、`10`、`^`）
     - `ans` → `{kind:'ans'}`；`ac` → `{kind:'clear'}`；`back` → `{kind:'backspace'}`
     - `left/right/undo/redo/equals/deg/shift/history/sto` → 对应 kind
     - 占位键（`mathUp/mathDown/math/fxs/grp/comma/eex-secondary` 等）→ `{kind:'placeholder'}`
@@ -1059,7 +1060,7 @@ export const ACTIONS = {
   pow: { kind: 'atom', payload: '^' },
   lparen: { kind: 'atom', payload: '(' }, rparen: { kind: 'atom', payload: ')' },
   pi: { kind: 'atom', payload: 'pi' }, percent: { kind: 'atom', payload: '%' },
-  eex: { kind: 'atom', payload: '*' }, // EE：作为 ×10^ 由 app 展开，见下
+  eex: { kind: 'func', payload: 'eex' }, // EE：由 app 展开为 ×10^
   sin: { kind: 'atom', payload: 'sin(' }, cos: { kind: 'atom', payload: 'cos(' },
   tan: { kind: 'atom', payload: 'tan(' }, ln: { kind: 'atom', payload: 'ln(' },
   sqrt: { kind: 'atom', payload: 'sqrt(' },
@@ -1427,7 +1428,10 @@ function dispatch(id) {
   switch (action.kind) {
     case 'digit': editor.insertDigit(action.payload); break;
     case 'atom': editor.insertAtom(action.payload); break;
-    case 'func': if (action.payload === 'square') { editor.insertAtom('^'); editor.insertAtom('2'); } break;
+    case 'func':
+      if (action.payload === 'square') { editor.insertAtom('^'); editor.insertAtom('2'); }
+      else if (action.payload === 'eex') { editor.insertAtom('*'); editor.insertDigit('1'); editor.insertDigit('0'); editor.insertAtom('^'); }
+      break;
     case 'ans': editor.insertAtom('Ans'); break;
     case 'backspace': editor.backspace(); break;
     case 'clear': editor.clear(); resultEl.textContent = ''; resultEl.classList.remove('error'); break;
