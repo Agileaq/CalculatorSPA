@@ -27,7 +27,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 #keypad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px;
   background: #111; padding: 1px; }
 .key { border: none; background: var(--key); color: var(--text); font-size: 22px;
-  padding: 16px 0; cursor: pointer; user-select: none; transition: background .08s; }
+  padding: 16px 0; cursor: pointer; user-select: none; transition: background .08s;
+  position: relative; }
+.key .second { position: absolute; top: 4px; left: 6px; font-size: 11px; color: var(--yellow); }
 .key:active { background: #333; }
 .key.fn { font-size: 15px; color: var(--muted); background: var(--panel); }
 .key.sci { font-size: 18px; background: #141416; }

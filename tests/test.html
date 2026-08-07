@@ -13,7 +13,7 @@
   import { Editor } from '../js/tokens.js';
   import { Store } from '../js/history.js';
   import { AppState } from '../js/state.js';
-  import { ACTIONS, KEYBOARD } from '../js/keymap.js';
+  import { ACTIONS, SHIFT_ACTIONS, KEYBOARD } from '../js/keymap.js';
 
   function memStorage() {
     const m = {};
@@ -140,6 +140,11 @@
     e.insertDigit('9');
     assertEqual(e.atoms.join(','), '29,+,3');
   });
+  test('前插数字并入右侧数字', () => {
+    const e = new Editor();
+    e.insertDigit('2'); e.moveLeft(); e.insertDigit('9');
+    assertEqual(e.atoms.join(','), '92');
+  });
   test('undo/redo', () => {
     const e = new Editor();
     e.insertDigit('2'); e.insertAtom('+');
@@ -217,6 +222,14 @@
     assertEqual(KEYBOARD['Enter'], 'equals');
     assertEqual(KEYBOARD['Backspace'], 'back');
     assertEqual(KEYBOARD['*'], 'mul');
+  });
+  test('Shift 第二功能 0→%', () => {
+    assertEqual(SHIFT_ACTIONS['0'].kind, 'atom');
+    assertEqual(SHIFT_ACTIONS['0'].payload, '%');
+  });
+  test('Shift 第二功能 EE→e^x', () => {
+    assertEqual(SHIFT_ACTIONS.eex.kind, 'func');
+    assertEqual(SHIFT_ACTIONS.eex.payload, 'epow');
   });
 
   runAll();

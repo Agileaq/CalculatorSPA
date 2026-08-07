@@ -3,7 +3,7 @@ import { Editor } from './tokens.js';
 import { AppState } from './state.js';
 import { Store } from './history.js';
 import { evaluate } from './engine.js';
-import { ACTIONS, KEYBOARD } from './keymap.js';
+import { ACTIONS, SHIFT_ACTIONS, KEYBOARD } from './keymap.js';
 
 const editor = new Editor();
 const state = new AppState();
@@ -76,7 +76,15 @@ function doSto() {
 }
 
 function dispatch(id) {
-  const action = ACTIONS[id];
+  const shifted = state.shift ? SHIFT_ACTIONS[id] : undefined;
+  // Shift 处于开启且该键没有真正的第二功能时：占位提示并清除 shift，不执行主功能。
+  // 例外：shift 键本身仅用于再次切换，不拦截。
+  if (state.shift && id !== 'shift' && !shifted) {
+    showToast('该功能暂未开放');
+    state.clearShift(); updateShift();
+    return;
+  }
+  const action = shifted || ACTIONS[id];
   if (!action) return;
   switch (action.kind) {
     case 'digit': editor.insertDigit(action.payload); break;
@@ -84,6 +92,7 @@ function dispatch(id) {
     case 'func':
       if (action.payload === 'square') { editor.insertAtom('^'); editor.insertAtom('2'); }
       else if (action.payload === 'eex') { editor.insertAtom('*'); editor.insertDigit('1'); editor.insertDigit('0'); editor.insertAtom('^'); }
+      else if (action.payload === 'epow') { editor.insertAtom('e'); editor.insertAtom('^'); }
       break;
     case 'ans': editor.insertAtom('Ans'); break;
     case 'backspace': editor.backspace(); break;

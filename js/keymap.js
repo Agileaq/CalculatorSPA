@@ -29,6 +29,11 @@ export const ACTIONS = {
   eng: { kind: 'placeholder' },
 };
 
+export const SHIFT_ACTIONS = {
+  '0': { kind: 'atom', payload: '%' },
+  eex: { kind: 'func', payload: 'epow' },
+};
+
 export const KEYBOARD = {
   '0': '0', '1': '1', '2': '2', '3': '3', '4': '4',
   '5': '5', '6': '6', '7': '7', '8': '8', '9': '9', '.': 'dot',

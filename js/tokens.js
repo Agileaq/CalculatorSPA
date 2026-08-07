@@ -20,9 +20,13 @@ export class Editor {
   insertDigit(ch) {
     this._snapshot();
     const left = this._atoms[this._cursor - 1];
+    const right = this._atoms[this._cursor];
     if (this._cursor > 0 && left !== undefined && isNumAtom(left) &&
         !(ch === '.' && left.includes('.'))) {
       this._atoms[this._cursor - 1] = left + ch;
+    } else if (right !== undefined && isNumAtom(right) &&
+        !(ch === '.' && right.includes('.'))) {
+      this._atoms[this._cursor] = ch + right; // 前插并入右侧数字，光标不动
     } else {
       this._atoms.splice(this._cursor, 0, ch);
       this._cursor++;
