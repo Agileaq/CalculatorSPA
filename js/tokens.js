@@ -20,10 +20,7 @@ export class Editor {
   insertDigit(ch) {
     this._snapshot();
     const left = this._atoms[this._cursor - 1];
-    // Merge into the left numeric atom only when continuing that number at the
-    // end of its run (cursor at array end). A mid-cursor digit starts a new atom.
-    if (this._cursor > 0 && this._cursor === this._atoms.length &&
-        left !== undefined && isNumAtom(left) &&
+    if (this._cursor > 0 && left !== undefined && isNumAtom(left) &&
         !(ch === '.' && left.includes('.'))) {
       this._atoms[this._cursor - 1] = left + ch;
     } else {
