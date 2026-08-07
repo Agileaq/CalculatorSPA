@@ -12,6 +12,7 @@
   import { evaluate as engineEval } from '../js/engine.js';
   import { Editor } from '../js/tokens.js';
   import { Store } from '../js/history.js';
+  import { AppState } from '../js/state.js';
 
   function memStorage() {
     const m = {};
@@ -180,6 +181,21 @@
     for (let i = 0; i < 105; i++) s.addHistory([String(i)], String(i));
     assertEqual(s.history.length, 100);
     assertEqual(s.history[0].display, '104');
+  });
+
+  test('默认 DEG', () => assertEqual(new AppState().angleMode, 'DEG'));
+  test('切换角度模式', () => {
+    const s = new AppState(); s.toggleAngleMode();
+    assertEqual(s.angleMode, 'RAD');
+  });
+  test('shift 切换与清除', () => {
+    const s = new AppState();
+    s.toggleShift(); assertEqual(s.shift, true);
+    s.clearShift(); assertEqual(s.shift, false);
+  });
+  test('ans 读写', () => {
+    const s = new AppState(); s.ans = 42;
+    assertEqual(s.ans, 42);
   });
 
   runAll();
