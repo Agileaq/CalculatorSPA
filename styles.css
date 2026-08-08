@@ -10,11 +10,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 #calc { display: flex; flex-direction: column; height: 100vh;
   max-width: 480px; margin: 0 auto; position: relative; }
 
-#statusbar { padding: 10px 14px; }
+#statusbar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; }
 .badge { background: var(--blue); color: #fff; font-size: 12px; font-weight: 700;
   padding: 2px 8px; border-radius: 6px; letter-spacing: 1px; }
 .badge.rad { background: var(--red); }
-#version { margin-top: 6px; font-size: 11px; color: #6a6a6e; letter-spacing: 1px; }
+#version { background: transparent; border: 1px solid var(--yellow); color: var(--yellow);
+  font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px;
+  letter-spacing: 1px; }
 
 #display { flex: 1; display: flex; flex-direction: column; justify-content: flex-start;
   align-items: flex-end; padding: 16px; overflow: hidden; }
