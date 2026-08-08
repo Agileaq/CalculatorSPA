@@ -1,9 +1,9 @@
-const CACHE = 'calc-v4';
+const CACHE = 'calc-v5';
 const ASSETS = [
   './', './index.html', './styles.css',
   './js/app.js', './js/tokens.js', './js/state.js', './js/history.js',
   './js/engine.js', './js/lexer.js', './js/parser.js', './js/evaluator.js',
-  './js/formatter.js', './js/keymap.js',
+  './js/formatter.js', './js/keymap.js', './js/mathmenu.js',
   './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png',
   './icons/icon-192-maskable.png', './icons/icon-512-maskable.png',
