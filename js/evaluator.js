@@ -26,6 +26,8 @@ function evalNode(node, ctx) {
         case '*': return a * b;
         case '/': if (b === 0) throw new CalcError('Math Error'); return a / b;
         case '^': return Math.pow(a, b);
+        case 'nCr': return nCr(a, b);
+        case 'nPr': return nPr(a, b);
       }
       break;
     }
@@ -52,3 +54,15 @@ function evalNode(node, ctx) {
   }
   throw new CalcError('Syntax Error');
 }
+
+function checkNK(n, k) {
+  if (!Number.isInteger(n) || !Number.isInteger(k) || n < 0 || k < 0 || k > n)
+    throw new CalcError('Math Error');
+}
+function factorial(n) {
+  let r = 1;
+  for (let i = 2; i <= n; i++) r *= i;
+  return r;
+}
+function nPr(n, k) { checkNK(n, k); return factorial(n) / factorial(n - k); }
+function nCr(n, k) { checkNK(n, k); return factorial(n) / (factorial(k) * factorial(n - k)); }

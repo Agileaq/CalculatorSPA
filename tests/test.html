@@ -131,6 +131,12 @@
   test('eval asin(2) Math Error', () => assertThrows(() => ev(['asin(', '2', ')']), 'Math Error'));
   test('eval cbrt(-8)=-2', () => assertClose(ev(['cbrt(', '-', '8', ')']), -2));
   test('eval abs(-5)=5', () => assertEqual(ev(['abs(', '-', '5', ')']), 5));
+  test('eval nCr(5,2)=10', () => assertEqual(ev(['5', 'nCr', '2']), 10));
+  test('eval nPr(5,2)=20', () => assertEqual(ev(['5', 'nPr', '2']), 20));
+  test('eval nCr 优先级 5C2*3=30', () => assertEqual(ev(['5', 'nCr', '2', '*', '3']), 30));
+  test('eval nCr(2,5) Math Error', () => assertThrows(() => ev(['2', 'nCr', '5']), 'Math Error'));
+  test('eval nCr(5,-1) Math Error', () => assertThrows(() => ev(['5', 'nCr', '-', '1']), 'Math Error'));
+  test('eval nCr(5.5,2) Math Error', () => assertThrows(() => ev(['5.5', 'nCr', '2']), 'Math Error'));
 
   const engineCtx = { angleMode: 'DEG', ans: 0, vars: {} };
   test('engine 成功返回 display', () => {
