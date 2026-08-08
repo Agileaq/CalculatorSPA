@@ -126,7 +126,11 @@ function execAction(action) {
       if (action.payload === 'square') { editor.insertAtom('^'); editor.insertAtom('2'); }
       else if (action.payload === 'cube') { editor.insertAtom('^'); editor.insertAtom('3'); }
       else if (action.payload === 'recip') { editor.insertAtom('^'); editor.insertAtom('('); editor.insertAtom('-'); editor.insertAtom('1'); editor.insertAtom(')'); }
-      else if (action.payload === 'tenpow') { editor.insertDigit('1'); editor.insertDigit('0'); editor.insertAtom('^'); }
+      else if (action.payload === 'tenpow') {
+        const left = editor.atoms[editor.cursor - 1];
+        if (left !== undefined && left !== '' && /^\d*\.?\d*$/.test(left)) editor.insertAtom('*');
+        editor.insertDigit('1'); editor.insertDigit('0'); editor.insertAtom('^');
+      }
       else if (action.payload === 'eex') { editor.insertAtom('*'); editor.insertDigit('1'); editor.insertDigit('0'); editor.insertAtom('^'); }
       else if (action.payload === 'epow') { editor.insertAtom('e'); editor.insertAtom('^'); }
       break;
