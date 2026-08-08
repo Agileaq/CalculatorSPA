@@ -4,6 +4,7 @@ import { AppState } from './state.js';
 import { Store } from './history.js';
 import { evaluate } from './engine.js';
 import { ACTIONS, SHIFT_ACTIONS, KEYBOARD } from './keymap.js';
+import { MATH_CATALOG } from './mathmenu.js';
 
 const editor = new Editor();
 const state = new AppState();
@@ -12,6 +13,7 @@ const store = new Store();
 const $ = (s) => document.querySelector(s);
 const exprEl = $('#expr'), resultEl = $('#result'), badgeEl = $('#badge');
 const toastEl = $('#toast'), panel = $('#history-panel'), list = $('#history-list');
+const mathPanel = $('#math-panel'), mathBody = $('#math-body');
 
 const DISPLAY = {
   '*': '×', '/': '÷', 'pi': 'π', 'sqrt(': '√(',
@@ -44,6 +46,42 @@ function updateBadge() {
 }
 function updateShift() {
   document.querySelector('[data-id="shift"]').classList.toggle('active', state.shift);
+  document.querySelector('#keypad').classList.toggle('shift-active', state.shift);
+}
+
+function injectShiftLabels() {
+  for (const [id, act] of Object.entries(SHIFT_ACTIONS)) {
+    if (!act.label) continue;
+    const btn = document.querySelector(`[data-id="${id}"]`);
+    if (!btn) continue;
+    btn.classList.add('has-shift');
+    const tag = document.createElement('span');
+    tag.className = 'second';
+    tag.textContent = act.label;
+    btn.prepend(tag);
+  }
+}
+
+function openMath() {
+  mathBody.innerHTML = '';
+  for (const group of MATH_CATALOG) {
+    const h = document.createElement('div'); h.className = 'math-group'; h.textContent = group.title;
+    mathBody.appendChild(h);
+    const grid = document.createElement('div'); grid.className = 'math-items';
+    for (const item of group.items) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'math-item';
+      b.textContent = item.label;
+      b.addEventListener('click', () => {
+        execAction(item.action);
+        state.clearShift(); updateShift();
+        mathPanel.hidden = true;
+        render();
+      });
+      grid.appendChild(b);
+    }
+    mathBody.appendChild(grid);
+  }
+  mathPanel.hidden = false;
 }
 
 function doEquals() {
@@ -98,9 +136,6 @@ function execAction(action) {
 
 const INSERT_KINDS = new Set(['digit', 'atom', 'func', 'ans']);
 
-// 临时占位：真正的 MATH 面板在 Task 9 实现，此处避免 ReferenceError
-function openMath() { showToast('MATH 面板开发中'); }
-
 function dispatch(id) {
   const shifted = state.shift ? SHIFT_ACTIONS[id] : undefined;
   // Shift 开启且该键无第二功能：占位提示并清除 shift（shift 键本身除外）
@@ -147,6 +182,8 @@ document.querySelector('#keypad').addEventListener('click', (e) => {
 badgeEl.addEventListener('click', () => dispatch('deg'));
 // 历史关闭
 document.querySelector('#history-close').addEventListener('click', () => { panel.hidden = true; });
+// MATH 关闭
+document.querySelector('#math-close').addEventListener('click', () => { mathPanel.hidden = true; });
 // 物理键盘
 window.addEventListener('keydown', (e) => {
   const id = KEYBOARD[e.key];
@@ -154,4 +191,5 @@ window.addEventListener('keydown', (e) => {
 });
 
 // 初始化
+injectShiftLabels();
 updateBadge(); updateShift(); render();
