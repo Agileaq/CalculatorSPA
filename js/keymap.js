@@ -22,16 +22,27 @@ export const ACTIONS = {
   deg: { kind: 'toggleAngle' }, shift: { kind: 'toggleShift' },
   history: { kind: 'history' }, sto: { kind: 'sto' },
   varX: { kind: 'atom', payload: 'X' },
+  math: { kind: 'math' },
   // 占位
   mathUp: { kind: 'placeholder' }, mathDown: { kind: 'placeholder' },
-  math: { kind: 'placeholder' }, fxs: { kind: 'placeholder' },
+  fxs: { kind: 'placeholder' },
   grp: { kind: 'placeholder' }, comma: { kind: 'placeholder' },
   eng: { kind: 'placeholder' },
 };
 
 export const SHIFT_ACTIONS = {
-  '0': { kind: 'atom', payload: '%' },
-  eex: { kind: 'func', payload: 'epow' },
+  pi:     { kind: 'atom', payload: 'e',     label: 'e' },
+  ln:     { kind: 'atom', payload: 'log(',  label: 'log' },
+  sin:    { kind: 'atom', payload: 'asin(', label: 'sin⁻¹' },
+  cos:    { kind: 'atom', payload: 'acos(', label: 'cos⁻¹' },
+  tan:    { kind: 'atom', payload: 'atan(', label: 'tan⁻¹' },
+  square: { kind: 'func', payload: 'cube',  label: 'x³' },
+  sqrt:   { kind: 'atom', payload: 'cbrt(', label: '³√' },
+  varX:   { kind: 'func', payload: 'recip', label: 'x⁻¹' },
+  add:    { kind: 'atom', payload: 'nCr',   label: 'nCr' },
+  sub:    { kind: 'atom', payload: 'nPr',   label: 'nPr' },
+  '0':    { kind: 'atom', payload: '%',     label: '%' },
+  eex:    { kind: 'func', payload: 'epow',  label: 'eˣ' },
 };
 
 export const KEYBOARD = {

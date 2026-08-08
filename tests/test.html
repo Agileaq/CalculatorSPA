@@ -255,7 +255,7 @@
     assertEqual(ACTIONS.sin.payload, 'sin(');
   });
   test('占位键', () => {
-    assertEqual(ACTIONS.math.kind, 'placeholder');
+    assertEqual(ACTIONS.fxs.kind, 'placeholder');
   });
   test('物理键映射', () => {
     assertEqual(KEYBOARD['Enter'], 'equals');
@@ -269,6 +269,26 @@
   test('Shift 第二功能 EE→e^x', () => {
     assertEqual(SHIFT_ACTIONS.eex.kind, 'func');
     assertEqual(SHIFT_ACTIONS.eex.payload, 'epow');
+  });
+  test('SHIFT ln→log 带 label', () => {
+    assertEqual(SHIFT_ACTIONS.ln.kind, 'atom');
+    assertEqual(SHIFT_ACTIONS.ln.payload, 'log(');
+    assertEqual(SHIFT_ACTIONS.ln.label, 'log');
+  });
+  test('SHIFT sin→asin 带 label', () => {
+    assertEqual(SHIFT_ACTIONS.sin.payload, 'asin(');
+    assertEqual(SHIFT_ACTIONS.sin.label, 'sin⁻¹');
+  });
+  test('SHIFT add→nCr', () => {
+    assertEqual(SHIFT_ACTIONS.add.payload, 'nCr');
+    assertEqual(SHIFT_ACTIONS.add.label, 'nCr');
+  });
+  test('SHIFT square→cube func', () => {
+    assertEqual(SHIFT_ACTIONS.square.kind, 'func');
+    assertEqual(SHIFT_ACTIONS.square.payload, 'cube');
+  });
+  test('math 动作非 placeholder', () => {
+    assertEqual(ACTIONS.math.kind, 'math');
   });
 
   runAll();
