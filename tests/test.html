@@ -14,6 +14,7 @@
   import { Store } from '../js/history.js';
   import { AppState } from '../js/state.js';
   import { ACTIONS, SHIFT_ACTIONS, KEYBOARD } from '../js/keymap.js';
+  import { MATH_CATALOG } from '../js/mathmenu.js';
 
   function memStorage() {
     const m = {};
@@ -289,6 +290,25 @@
   });
   test('math 动作非 placeholder', () => {
     assertEqual(ACTIONS.math.kind, 'math');
+  });
+
+  test('MATH_CATALOG 分类齐全', () => {
+    const titles = MATH_CATALOG.map(g => g.title);
+    assertEqual(titles.join(','), '三角函数,对数指数,幂与根,组合数,常数/其他');
+  });
+  test('MATH_CATALOG 每条目有 label 与 action', () => {
+    for (const g of MATH_CATALOG) for (const it of g.items) {
+      if (!it.label || !it.action || !it.action.kind)
+        throw new Error('bad item ' + JSON.stringify(it));
+    }
+  });
+  test('MATH_CATALOG 原子能被 lexer 识别', () => {
+    // 仅校验 kind:'atom' 且 payload 为完整原子（func 展开由 app 负责，跳过）
+    for (const g of MATH_CATALOG) for (const it of g.items) {
+      if (it.action.kind === 'atom') {
+        lex([it.action.payload]); // 不抛异常即通过
+      }
+    }
   });
 
   runAll();
