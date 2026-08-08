@@ -122,6 +122,15 @@
   test('eval 除零 Math Error', () => assertThrows(() => ev(['1', '/', '0']), 'Math Error'));
   test('eval ln(0) Math Error', () => assertThrows(() => ev(['ln(', '0', ')']), 'Math Error'));
   test('eval sqrt(-1) Math Error', () => assertThrows(() => ev(['sqrt(', '-', '1', ')']), 'Math Error'));
+  test('eval log(1000)=3', () => assertClose(ev(['log(', '1000', ')']), 3));
+  test('eval log(0) Math Error', () => assertThrows(() => ev(['log(', '0', ')']), 'Math Error'));
+  test('eval asin(0.5)=30 DEG', () => assertClose(ev(['asin(', '0.5', ')']), 30));
+  test('eval asin(0.5)=pi/6 RAD', () => assertClose(ev(['asin(', '0.5', ')'], { angleMode: 'RAD' }), Math.PI / 6));
+  test('eval acos(1)=0', () => assertClose(ev(['acos(', '1', ')']), 0));
+  test('eval atan(1)=45 DEG', () => assertClose(ev(['atan(', '1', ')']), 45));
+  test('eval asin(2) Math Error', () => assertThrows(() => ev(['asin(', '2', ')']), 'Math Error'));
+  test('eval cbrt(-8)=-2', () => assertClose(ev(['cbrt(', '-', '8', ')']), -2));
+  test('eval abs(-5)=5', () => assertEqual(ev(['abs(', '-', '5', ')']), 5));
 
   const engineCtx = { angleMode: 'DEG', ans: 0, vars: {} };
   test('engine 成功返回 display', () => {

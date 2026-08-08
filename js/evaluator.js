@@ -2,6 +2,7 @@
 export class CalcError extends Error {}
 
 const toRad = (x, mode) => (mode === 'DEG' ? (x * Math.PI) / 180 : x);
+const fromRad = (x, mode) => (mode === 'DEG' ? (x * 180) / Math.PI : x);
 
 export function evaluate(node, ctx) {
   const n = evalNode(node, ctx);
@@ -40,6 +41,12 @@ function evalNode(node, ctx) {
         }
         case 'ln': if (x <= 0) throw new CalcError('Math Error'); return Math.log(x);
         case 'sqrt': if (x < 0) throw new CalcError('Math Error'); return Math.sqrt(x);
+        case 'log': if (x <= 0) throw new CalcError('Math Error'); return Math.log10(x);
+        case 'asin': if (x < -1 || x > 1) throw new CalcError('Math Error'); return fromRad(Math.asin(x), ctx.angleMode);
+        case 'acos': if (x < -1 || x > 1) throw new CalcError('Math Error'); return fromRad(Math.acos(x), ctx.angleMode);
+        case 'atan': return fromRad(Math.atan(x), ctx.angleMode);
+        case 'cbrt': return Math.cbrt(x);
+        case 'abs': return Math.abs(x);
       }
     }
   }
