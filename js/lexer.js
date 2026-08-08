@@ -4,7 +4,11 @@ export const TOKEN_TYPES = {
   FUNC: 'FUNC', CONST: 'CONST', VAR: 'VAR', ANS: 'ANS', PERCENT: 'PERCENT',
 };
 const T = TOKEN_TYPES;
-const FUNCS = { 'sin(': 'sin', 'cos(': 'cos', 'tan(': 'tan', 'ln(': 'ln', 'sqrt(': 'sqrt' };
+const FUNCS = {
+  'sin(': 'sin', 'cos(': 'cos', 'tan(': 'tan', 'ln(': 'ln', 'sqrt(': 'sqrt',
+  'log(': 'log', 'asin(': 'asin', 'acos(': 'acos', 'atan(': 'atan',
+  'cbrt(': 'cbrt', 'abs(': 'abs',
+};
 
 function classify(atom) {
   if (/^\d*\.?\d+$/.test(atom) || /^\d+\.$/.test(atom)) return [{ type: T.NUM, value: Number(atom) }];
@@ -15,6 +19,7 @@ function classify(atom) {
   if (atom === 'pi' || atom === 'e') return [{ type: T.CONST, value: atom }];
   if (atom === 'Ans') return [{ type: T.ANS }];
   if (atom === '%') return [{ type: T.PERCENT }];
+  if (atom === 'nCr' || atom === 'nPr') return [{ type: T.OP, value: atom }];
   if (/^[A-Z]$/.test(atom)) return [{ type: T.VAR, value: atom }];
   throw new Error('Syntax Error');
 }

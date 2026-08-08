@@ -57,6 +57,21 @@
     assertEqual(types(['2', 'sin(']).join(','), [T.NUM, T.OP, T.FUNC, T.LPAREN].join(','));
   });
   test('lex 未知原子报错', () => assertThrows(() => lex(['@']), 'Syntax Error'));
+  test('lex 新函数 log 展开', () => {
+    const t = lex(['log(', '100', ')']);
+    assertEqual(t[0].type, T.FUNC); assertEqual(t[0].value, 'log');
+    assertEqual(t[1].type, T.LPAREN);
+  });
+  test('lex 新函数 asin/cbrt/abs', () => {
+    assertEqual(lex(['asin('])[0].value, 'asin');
+    assertEqual(lex(['cbrt('])[0].value, 'cbrt');
+    assertEqual(lex(['abs('])[0].value, 'abs');
+  });
+  test('lex nCr/nPr 为 OP', () => {
+    const t = lex(['5', 'nCr', '2']);
+    assertEqual(t[1].type, T.OP); assertEqual(t[1].value, 'nCr');
+    assertEqual(t.length, 3); // 无隐式乘法插入
+  });
 
   const ast = (atoms) => parse(lex(atoms));
 
