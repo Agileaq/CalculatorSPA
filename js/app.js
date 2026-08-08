@@ -13,7 +13,11 @@ const $ = (s) => document.querySelector(s);
 const exprEl = $('#expr'), resultEl = $('#result'), badgeEl = $('#badge');
 const toastEl = $('#toast'), panel = $('#history-panel'), list = $('#history-list');
 
-const DISPLAY = { '*': '×', '/': '÷', 'pi': 'π', 'sqrt(': '√(' };
+const DISPLAY = {
+  '*': '×', '/': '÷', 'pi': 'π', 'sqrt(': '√(',
+  'asin(': 'sin⁻¹(', 'acos(': 'cos⁻¹(', 'atan(': 'tan⁻¹(', 'cbrt(': '³√(',
+  'nCr': 'C', 'nPr': 'P',
+};
 const showAtom = (a) => DISPLAY[a] ?? a;
 
 function render() {
@@ -75,10 +79,31 @@ function doSto() {
   showToast(`已存入 ${name}`);
 }
 
+// 只处理「插入到编辑区」的动作；调用方负责 render()
+function execAction(action) {
+  switch (action.kind) {
+    case 'digit': editor.insertDigit(action.payload); break;
+    case 'atom': editor.insertAtom(action.payload); break;
+    case 'func':
+      if (action.payload === 'square') { editor.insertAtom('^'); editor.insertAtom('2'); }
+      else if (action.payload === 'cube') { editor.insertAtom('^'); editor.insertAtom('3'); }
+      else if (action.payload === 'recip') { editor.insertAtom('^'); editor.insertAtom('('); editor.insertAtom('-'); editor.insertAtom('1'); editor.insertAtom(')'); }
+      else if (action.payload === 'tenpow') { editor.insertDigit('1'); editor.insertDigit('0'); editor.insertAtom('^'); }
+      else if (action.payload === 'eex') { editor.insertAtom('*'); editor.insertDigit('1'); editor.insertDigit('0'); editor.insertAtom('^'); }
+      else if (action.payload === 'epow') { editor.insertAtom('e'); editor.insertAtom('^'); }
+      break;
+    case 'ans': editor.insertAtom('Ans'); break;
+  }
+}
+
+const INSERT_KINDS = new Set(['digit', 'atom', 'func', 'ans']);
+
+// 临时占位：真正的 MATH 面板在 Task 9 实现，此处避免 ReferenceError
+function openMath() { showToast('MATH 面板开发中'); }
+
 function dispatch(id) {
   const shifted = state.shift ? SHIFT_ACTIONS[id] : undefined;
-  // Shift 处于开启且该键没有真正的第二功能时：占位提示并清除 shift，不执行主功能。
-  // 例外：shift 键本身仅用于再次切换，不拦截。
+  // Shift 开启且该键无第二功能：占位提示并清除 shift（shift 键本身除外）
   if (state.shift && id !== 'shift' && !shifted) {
     showToast('该功能暂未开放');
     state.clearShift(); updateShift();
@@ -86,15 +111,15 @@ function dispatch(id) {
   }
   const action = shifted || ACTIONS[id];
   if (!action) return;
+
+  if (INSERT_KINDS.has(action.kind)) {
+    execAction(action);
+    state.clearShift(); updateShift();
+    render();
+    return;
+  }
+
   switch (action.kind) {
-    case 'digit': editor.insertDigit(action.payload); break;
-    case 'atom': editor.insertAtom(action.payload); break;
-    case 'func':
-      if (action.payload === 'square') { editor.insertAtom('^'); editor.insertAtom('2'); }
-      else if (action.payload === 'eex') { editor.insertAtom('*'); editor.insertDigit('1'); editor.insertDigit('0'); editor.insertAtom('^'); }
-      else if (action.payload === 'epow') { editor.insertAtom('e'); editor.insertAtom('^'); }
-      break;
-    case 'ans': editor.insertAtom('Ans'); break;
     case 'backspace': editor.backspace(); break;
     case 'clear': editor.clear(); resultEl.textContent = ''; resultEl.classList.remove('error'); break;
     case 'left': editor.moveLeft(); break;
@@ -102,13 +127,14 @@ function dispatch(id) {
     case 'undo': editor.undo(); break;
     case 'redo': editor.redo(); break;
     case 'equals': doEquals(); break;
-    case 'toggleAngle': state.toggleAngleMode(); updateBadge(); break;
-    case 'toggleShift': state.toggleShift(); updateShift(); return; // 不重渲染 expr
+    case 'toggleAngle': state.toggleAngleMode(); updateBadge(); return;
+    case 'toggleShift': state.toggleShift(); updateShift(); return;
     case 'history': openHistory(); return;
+    case 'math': openMath(); return;
     case 'sto': doSto(); return;
     case 'placeholder': showToast('该功能暂未开放'); return;
   }
-  if (action.kind !== 'toggleAngle') state.clearShift(), updateShift();
+  state.clearShift(); updateShift();
   render();
 }
 
