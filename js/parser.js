@@ -18,8 +18,16 @@ export function parse(tokens) {
     return node;
   }
   function parseMulDiv() {
-    let node = parseUnary();
+    let node = parseCombi();
     while (peek() && peek().type === T.OP && (peek().value === '*' || peek().value === '/')) {
+      const op = next().value;
+      node = { kind: 'binary', op, left: node, right: parseCombi() };
+    }
+    return node;
+  }
+  function parseCombi() {
+    let node = parseUnary();
+    while (peek() && peek().type === T.OP && (peek().value === 'nCr' || peek().value === 'nPr')) {
       const op = next().value;
       node = { kind: 'binary', op, left: node, right: parseUnary() };
     }

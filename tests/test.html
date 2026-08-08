@@ -98,6 +98,15 @@
   });
   test('parse 括号不匹配报错', () => assertThrows(() => ast(['(', '2']), 'Syntax Error'));
   test('parse 空输入报错', () => assertThrows(() => parse([]), 'Syntax Error'));
+  test('parse nCr 二元节点', () => {
+    const a = ast(['5', 'nCr', '2']);
+    assertEqual(a.kind, 'binary'); assertEqual(a.op, 'nCr');
+    assertEqual(a.left.value, 5); assertEqual(a.right.value, 2);
+  });
+  test('parse nCr 紧于乘法', () => {
+    const a = ast(['5', 'nCr', '2', '*', '3']); // (5 nCr 2) * 3
+    assertEqual(a.op, '*'); assertEqual(a.left.op, 'nCr');
+  });
 
   const ev = (atoms, ctx = {}) =>
     evaluate(parse(lex(atoms)), { angleMode: 'DEG', ans: 0, vars: {}, ...ctx });
