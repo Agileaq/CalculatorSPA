@@ -96,17 +96,23 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 .math-item:active { background: #333; }
 
 /* Magnifier loupe (touch-drag cursor assist). Sits directly above #expr,
-   centered on the cursor. Shows ≤3 chars left + cursor + ≤3 chars right, one line. */
-#magnifier { position: fixed; left: 0; top: 0; width: 200px; height: 64px;
+   centered on the cursor. Shows ≤4 chars left + cursor + ≤4 chars right, with
+   the outer half-char clipped at each edge by overflow:hidden. Height hugs the
+   text (no vertical padding), so it just fits the magnified digits. */
+#magnifier { position: fixed; left: 0; top: 0; width: 220px;
   border-radius: 6px; overflow: hidden; pointer-events: none; z-index: 30;
-  transform: translate(-50%, 0); border: 2px solid rgba(255,255,255,.5);
+  transform: translate(-50%, -100%); border: 2px solid rgba(255,255,255,.5);
   background: var(--bg); box-shadow: 0 6px 16px rgba(0,0,0,.6); }
-#magnifier .content { display: flex; align-items: center; justify-content: center;
-  height: 100%; padding: 0 4px; box-sizing: border-box;
-  font-size: 30px; line-height: 1; color: var(--text);
+/* Each side is a fixed ~4.5-char-wide half centered on the cursor. Overflowing
+   chars (when the expr is long) clip at the loupe edge, exactly like a viewport
+   window — no ellipsis, no centering whitespace. */
+#magnifier .content { position: relative; height: 38px;
+  font-size: 30px; line-height: 38px; color: var(--text);
   font-family: -apple-system, system-ui, sans-serif; white-space: nowrap; }
-#magnifier .content .left, #magnifier .content .right { min-width: 0; text-align: center; }
-/* The loupe's cursor sits at flex center; the equal left/right padding below
-   keeps it visually centered over the real cursor, not stuck against a side. */
-#magnifier .content .cursor { display: inline-block; width: 2px; height: 36px;
-  background: var(--text); margin: 0 1px; flex: 0 0 auto; }
+#magnifier .content .left, #magnifier .content .right {
+  position: absolute; top: 0; width: 110px; overflow: hidden; }
+#magnifier .content .left { right: 50%; text-align: right; }     /* grows leftward from center */
+#magnifier .content .right { left: 50%; text-align: left; }       /* grows rightward from center */
+#magnifier .content .cursor { position: absolute; left: 50%; top: 0;
+  transform: translateX(-50%); display: inline-block; width: 2px; height: 38px;
+  background: var(--text); z-index: 1; }

@@ -256,7 +256,7 @@ const magContent = document.createElement('div');
 magContent.className = 'content';
 magEl.appendChild(magContent);
 document.body.appendChild(magEl);
-const MAG_W = 200, MAG_H = 64, MAG_N = 3;               // window: ≤3 chars each side, 1.5× tall
+const MAG_W = 220, MAG_N = 4;                            // window: ≤4 chars each side (+0.5 via overflow clip)
 let magOn = false;
 // Build the ≤MAG_N chars left and right of the cursor from the display string.
 // Cursor can sit at an atom boundary (offset 0) or inside a number atom (offset o).
@@ -281,8 +281,8 @@ function showMagnifier() {
   let cx = cur ? cur.getBoundingClientRect().left : rect.left + rect.width / 2;
   const vw = window.innerWidth;
   cx = Math.max(MAG_W / 2, Math.min(cx, vw - MAG_W / 2));   // keep on screen at the edges
-  let top = rect.top - MAG_H - 6;                            // directly above the digit line
-  if (top < 2) top = 2;                                      // clamp into the viewport
+  let top = rect.top - 6;                                   // directly above the digit line (loupe height = content)
+  if (top < 2) top = 2;                                     // clamp into the viewport
   magEl.style.left = cx + 'px';
   magEl.style.top = top + 'px';
   const { left, right } = loupeWindow();
