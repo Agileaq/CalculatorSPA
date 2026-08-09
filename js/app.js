@@ -311,7 +311,10 @@ function showMagnifier() {
   let left = realX - (curX + tx);
   left = Math.max(0, Math.min(left, vw - w));
   magEl.style.left = left + 'px';
-  magEl.style.top = (rect.top - 4) + 'px';
+  const h = magEl.offsetHeight;                              // content 38px + 2×2px border
+  let top = rect.top - h - 4;                                 // sit fully above #expr with a 4px gap
+  if (top < 2) top = rect.bottom + 4;                         // no room above → drop below the expr
+  magEl.style.top = top + 'px';
 }
 function hideMagnifier() { magEl.hidden = true; }
 // Touch expression to move cursor: press-and-hold, drag to position, release
