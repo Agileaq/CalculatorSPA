@@ -270,11 +270,10 @@ function displayString() {
   if (k === atoms.length) curIdx = s.length;            // cursor at end
   return { s, curIdx };
 }
-// Loupe above #expr, magnified cursor overlaying the real one. Each side is a
-// max-4.5ch overflow-hidden window over the full expression: up to 4 chars + a
-// clipped half of the 5th show (border cuts the 5th on its midline); a side with
-// no content (cursor at the start/end) collapses to width 0 — no blank — and
-// the opposite side's half-char peeks at its border, symmetric at both ends.
+// Loupe above #expr, magnified cursor overlaying the real one. A fixed 9ch-wide
+// viewport over one line of the whole expression, translated so the cursor sits
+// centered; at the ends the translate is clamped so the cursor rides the near
+// border and the far side's half-char peeks at the opposite border (symmetric).
 function showMagnifier() {
   const cur = exprEl.querySelector('.cursor');
   const rect = exprEl.getBoundingClientRect();
@@ -284,14 +283,32 @@ function showMagnifier() {
   magEl.style.left = '-9999px';
   magEl.hidden = false;                                    // render off-screen so layout measures
   magContent.textContent = '';
-  const l = document.createElement('span'); l.className = 'left'; l.textContent = s.slice(0, curIdx);
+  const line = document.createElement('span'); line.className = 'line';
+  const l = document.createElement('span'); l.textContent = s.slice(0, curIdx);
   const c = document.createElement('span'); c.className = 'cursor';
-  const r = document.createElement('span'); r.className = 'right'; r.textContent = s.slice(curIdx);
-  magContent.append(l, c, r);
-  // Park the loupe so the magnified cursor overlays the real one, then keep on-screen.
-  const curOff = c.getBoundingClientRect().left - magEl.getBoundingClientRect().left;
-  const w = magEl.offsetWidth || 160;
-  let left = realX - curOff;
+  const r = document.createElement('span'); r.textContent = s.slice(curIdx);
+  line.append(l, c, r);
+  magContent.appendChild(line);
+  const w = magEl.offsetWidth;                              // 9ch + border (fixed by CSS)
+  const curX = c.offsetLeft;                                // cursor left edge within the line
+  const lineW = line.offsetWidth;
+  // Translate the line so the magnified cursor lands where we want inside the
+  // 9ch viewport: centered in the middle, parked at the near border at the ends
+  // (so the far side's half-char peeks at the opposite border — symmetric).
+  const pad = 4;
+  let tx;
+  if (lineW <= w) {
+    tx = (w - lineW) / 2;                                    // short expr: center the whole line
+  } else {
+    tx = w / 2 - curX;                                       // start: center the cursor
+    if (curX + tx < pad) tx = pad - curX;                    // left end: pin cursor to the left border
+    if (curX + tx > w - pad) tx = w - pad - curX;            // right end: pin cursor to the right border
+    tx = Math.max(w - lineW, Math.min(tx, 0));               // keep the viewport full (line wider than w)
+  }
+  line.style.transform = `translateX(${tx}px)`;
+  // Place the loupe so the magnified cursor overlays the real one, then keep on-screen.
+  // curX + tx is the cursor's X within the loupe; loupe left = real cursor X − that.
+  let left = realX - (curX + tx);
   left = Math.max(0, Math.min(left, vw - w));
   magEl.style.left = left + 'px';
   magEl.style.top = (rect.top - 4) + 'px';

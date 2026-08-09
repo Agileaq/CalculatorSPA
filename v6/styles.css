@@ -95,28 +95,20 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
   font-size: 18px; padding: 16px 0; cursor: pointer; }
 .math-item:active { background: #333; }
 
-/* Magnifier loupe (touch-drag cursor assist). Sits directly above #expr,
-   the magnified cursor overlaying the real one. Each side is a max-4.5ch
-   window over the full expression: ≤4 chars + a clipped half of the 5th show
-   (border cuts the 5th on its midline). A side with no content collapses to
-   width 0 — no blank — so at the start/end the opposite side's half-char
-   peeks at its border, symmetric at both ends. The loupe shrink-wraps its
-   content (inline-flex), so its width tracks the content, never a fixed px. */
-#magnifier { position: fixed; left: 0; top: 0; display: inline-flex; align-items: stretch;
+/* Magnifier loupe (touch-drag cursor assist). Sits directly above #expr, the
+   magnified cursor overlaying the real one. A fixed 9ch-wide viewport over one
+   line of the whole expression; JS translates the line so the cursor is centered,
+   clamping at the ends so the cursor rides the near border and the far side's
+   half-char peeks at the opposite border (symmetric at both ends). 1.2× zoom
+   (font 38px vs #expr's 32px); ch-based width tracks the font, no hand-picked px. */
+#magnifier { position: fixed; left: 0; top: 0; width: 9ch;
   border-radius: 6px; overflow: hidden; pointer-events: none; z-index: 30;
   border: 2px solid rgba(255,255,255,.5); background: var(--bg);
   box-shadow: 0 6px 16px rgba(0,0,0,.6); }
-#magnifier .content { display: inline-flex; align-items: stretch; height: 38px;
+#magnifier .content { position: relative; width: 9ch; height: 38px; overflow: hidden;
   font-size: 38px; line-height: 1; color: var(--text);
   font-family: -apple-system, system-ui, sans-serif; white-space: nowrap; }
-#magnifier .content .left, #magnifier .content .right {
-  max-width: 4.5ch; overflow: hidden; display: inline-block; height: 38px; }
-/* Each side holds the chars nearest the cursor and clips at its far end.
-   .left grows leftward from the cursor: text-align:right pins its right edge
-   to the cursor and overflow:hidden drops whatever spills past 4.5ch on the
-   far (left) side. .right grows rightward: text-align:left pins to the cursor
-   on the left, clips the far (right) side. No RTL needed. */
-#magnifier .content .left { text-align: right; }
-#magnifier .content .right { text-align: left; }
+#magnifier .content .line { position: absolute; top: 0; left: 0; white-space: nowrap;
+  will-change: transform; }
 #magnifier .content .cursor { display: inline-block; width: 2px; height: 38px;
-  background: var(--text); flex: 0 0 auto; }
+  background: var(--text); vertical-align: top; }
