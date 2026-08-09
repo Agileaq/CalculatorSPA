@@ -208,6 +208,84 @@
     e.setCursor(99); assertEqual(e.cursor, 3);                   // 钳制到末尾
     e.setCursor(-5); assertEqual(e.cursor, 0);                    // 钳制到开头
   });
+  test('setCursor 数字内偏移', () => {
+    const e = new Editor();
+    e.insertDigit('1'); e.insertDigit('2'); e.insertDigit('3'); e.insertDigit('4'); // ["1234"]
+    e.setCursor(0, 2); assertEqual(e.cursor, 0); assertEqual(e.offset, 2);           // 2 与 3 之间
+    e.setCursor(0, 99); assertEqual(e.cursor, 1); assertEqual(e.offset, 0);          // 右边界→(1,0)
+    e.setCursor(0, -5); assertEqual(e.cursor, 0); assertEqual(e.offset, 0);          // 钳制到开头
+  });
+  test('setCursor 非数字原子 offset 强制 0', () => {
+    const e = new Editor();
+    e.insertDigit('2'); e.insertAtom('+'); e.insertDigit('3');                       // ["2","+","3"]
+    e.setCursor(1, 5); assertEqual(e.cursor, 1); assertEqual(e.offset, 0);
+  });
+  test('insertDigit 数字内插入', () => {
+    const e = new Editor();
+    e.insertDigit('1'); e.insertDigit('2'); e.insertDigit('3'); e.insertDigit('4'); // ["1234"]
+    e.setCursor(0, 2); e.insertDigit('5');                                            // 12|5|34 → 12534
+    assertEqual(e.atoms.join(','), '12534');
+    assertEqual(e.cursor, 0); assertEqual(e.offset, 3);
+  });
+  test('backspace 数字内删字符', () => {
+    const e = new Editor();
+    e.insertDigit('1'); e.insertDigit('2'); e.insertDigit('3'); e.insertDigit('4');
+    e.setCursor(0, 2); e.backspace();                                                // 删 2 → 134
+    assertEqual(e.atoms.join(','), '134');
+    assertEqual(e.cursor, 0); assertEqual(e.offset, 1);
+  });
+  test('backspace 数字内删到空原子', () => {
+    const e = new Editor();
+    e.insertDigit('5'); e.insertDigit('6');                                          // ["56"]
+    e.setCursor(0, 1); e.backspace();                                                // 删 5 → ["6"]
+    assertEqual(e.atoms.join(','), '6');
+    assertEqual(e.cursor, 0); assertEqual(e.offset, 0);
+  });
+  test('moveLeft/moveRight 逐字符跨原子', () => {
+    const e = new Editor();
+    e.insertDigit('1'); e.insertDigit('2'); e.insertDigit('3'); e.insertDigit('4'); // ["1234"] (1,0)
+    e.moveLeft();  assertEqual(e.cursor, 0); assertEqual(e.offset, 3);                // 进 1234 右端
+    e.moveLeft();  assertEqual(e.offset, 2);
+    e.moveLeft();  assertEqual(e.offset, 1);
+    e.moveLeft();  assertEqual(e.offset, 0);
+    e.moveLeft();  assertEqual(e.cursor, 0); assertEqual(e.offset, 0);               // 已到头,no-op
+    e.moveRight(); assertEqual(e.offset, 1);
+    e.moveRight(); assertEqual(e.offset, 2);
+    e.moveRight(); assertEqual(e.offset, 3);
+    e.moveRight(); assertEqual(e.cursor, 1); assertEqual(e.offset, 0);              // 跨到末尾
+  });
+  test('1字符数字一步跨过', () => {
+    const e = new Editor();
+    e.insertDigit('5'); e.insertAtom('+'); e.insertDigit('3');                       // ["5","+","3"] (3,0)
+    e.setCursor(1); e.moveLeft();                                                     // "5" 1 字符 → (0,0)
+    assertEqual(e.cursor, 0); assertEqual(e.offset, 0);
+    e.moveRight(); assertEqual(e.cursor, 1); assertEqual(e.offset, 0);              // 一步跨回
+  });
+  test('undo/redo 恢复 offset', () => {
+    const e = new Editor();
+    e.insertDigit('1'); e.insertDigit('2'); e.insertDigit('3'); e.insertDigit('4');
+    e.setCursor(0, 2); e.insertDigit('5');                                            // 12534 (0,3)
+    e.undo();                                                                        // → ["1234"] (0,2)
+    assertEqual(e.atoms.join(','), '1234');
+    assertEqual(e.cursor, 0); assertEqual(e.offset, 2);
+    e.redo();
+    assertEqual(e.atoms.join(','), '12534');
+    assertEqual(e.cursor, 0); assertEqual(e.offset, 3);
+  });
+  test('insertAtom 数字内分裂', () => {
+    const e = new Editor();
+    e.insertDigit('1'); e.insertDigit('2'); e.insertDigit('3'); e.insertDigit('4');
+    e.setCursor(0, 2); e.insertAtom('+');                                            // 12 + 34 → ["12","+","34"]
+    assertEqual(e.atoms.join(','), '12,+,34');
+    assertEqual(e.cursor, 2); assertEqual(e.offset, 0);
+  });
+  test('点号数字内不重复', () => {
+    const e = new Editor();
+    e.insertDigit('3'); e.insertDigit('.'); e.insertDigit('4');                     // ["3.4"]
+    e.setCursor(0, 2); e.insertDigit('.');                                           // 拒绝,无变化
+    assertEqual(e.atoms.join(','), '3.4');
+    assertEqual(e.cursor, 0); assertEqual(e.offset, 2);
+  });
 
   test('addHistory 最新在前', () => {
     const s = new Store(memStorage());

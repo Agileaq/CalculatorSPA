@@ -27,17 +27,38 @@ const showAtom = (a) => DISPLAY[a] ?? a;
 function render() {
   exprEl.innerHTML = '';
   const atoms = editor.atoms;
+  const cur = editor.cursor, off = editor.offset;
   for (let i = 0; i <= atoms.length; i++) {
-    if (i === editor.cursor) {
+    // Cursor at an atom boundary (offset 0): before atoms[i] (or at end if i===len).
+    if (i === cur && off === 0) {
       const c = document.createElement('span'); c.className = 'cursor'; exprEl.appendChild(c);
     }
     if (i < atoms.length) {
+      const a = atoms[i];
       const t = document.createElement('span'); t.className = 'tok'; t.dataset.i = i;
-      t.textContent = showAtom(atoms[i]);
+      if (isNumDisplay(a)) {
+        // Number atom: wrap each char in its own .ch span (data-c) so a touch can
+        // land between any two chars. If the cursor sits inside this atom, insert
+        // it between the right .ch spans.
+        const chars = showAtom(a);
+        for (let c = 0; c < chars.length; c++) {
+          if (i === cur && off === c) {
+            const cur2 = document.createElement('span'); cur2.className = 'cursor'; t.appendChild(cur2);
+          }
+          const ch = document.createElement('span'); ch.className = 'ch'; ch.dataset.c = c;
+          ch.textContent = chars[c];
+          t.appendChild(ch);
+        }
+      } else {
+        t.textContent = showAtom(a);
+      }
       exprEl.appendChild(t);
     }
   }
 }
+// A number atom renders char-by-char for hit-testing. DISPLAY-translated atoms like
+// 'sin(' are still single spans (no char-level cursor inside them). Only digit/. atoms.
+const isNumDisplay = (a) => /^\d*\.?\d*$/.test(a) && a !== '';
 
 let toastTimer = null;
 function showToast(msg) {
@@ -230,20 +251,31 @@ function nearestBoundary(x, y) {
   const toks = exprEl.querySelectorAll('.tok');
   if (!toks.length) return null;                      // empty expr: nothing to do
   let best = null, bestLine = Infinity, bestDx = Infinity;
-  // Nearest line first (smallest vertical gap), then nearest x on that line.
-  // Each token's left/right edge is an atom boundary → cursor snaps there (never mid-atom).
+  // Collect candidate (x, {i,o}) pairs per token line fragment. For a number atom
+  // the .ch spans give a boundary between every two chars (plus the outer edges);
+  // non-number atoms expose only their outer edges (cursor snaps at atom boundaries).
   for (const tok of toks) {
     const i = +tok.dataset.i;
+    const chs = tok.querySelectorAll(':scope > .ch');
     for (const rect of tok.getClientRects()) {
       const dy = Math.max(0, rect.top - y, y - rect.bottom); // 0 when y is on this line
       if (dy > bestLine) continue;                    // a nearer line already found
-      for (const [ex, pos] of [[rect.left, i], [rect.right, i + 1]]) {
+      const edges = chs.length
+        ? [{ ex: rect.left, o: 0 }, ...Array.from(chs).map((ch, c) => ({ ex: ch.getBoundingClientRect().right, o: c + 1 }))]
+        : [{ ex: rect.left, o: 0 }, { ex: rect.right, o: 0 }];
+      for (const { ex, o } of edges) {
         const dx = Math.abs(ex - x);
-        if (dy < bestLine || (dy === bestLine && dx < bestDx)) { bestLine = dy; bestDx = dx; best = pos; }
+        if (dy < bestLine || (dy === bestLine && dx < bestDx)) {
+          bestLine = dy; bestDx = dx;
+          // offset === atom length (right edge) → canonical next boundary (i+1, 0)
+          const ni = (o > 0 && o === chs.length) ? i + 1 : i;
+          const no = (o > 0 && o === chs.length) ? 0 : o;
+          best = { i: ni, o: no };
+        }
       }
     }
   }
-  return best;                                        // atom index (0..atoms.length)
+  return best;
 }
 let dragging = false;
 exprEl.addEventListener('pointerdown', (e) => {
@@ -254,14 +286,14 @@ exprEl.addEventListener('pointerdown', (e) => {
   e.preventDefault();                                 // suppress text-selection long-press
   dragging = true;
   try { exprEl.setPointerCapture(e.pointerId); } catch (_) {}
-  editor.setCursor(pos);                              // pure cursor move (no recall reset, like ‹ › keys)
+  editor.setCursor(pos.i, pos.o);                       // pure cursor move (no recall reset, like ‹ › keys)
   render();
 });
 exprEl.addEventListener('pointermove', (e) => {
   if (!dragging) return;
   const pos = nearestBoundary(e.clientX, e.clientY);
   if (pos === null) return;
-  editor.setCursor(pos);
+  editor.setCursor(pos.i, pos.o);
   render();
 });
 const endDrag = (e) => {
