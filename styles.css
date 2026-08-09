@@ -63,9 +63,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
   display: flex; flex-direction: column; }
 .history-head { display: flex; justify-content: space-between; align-items: center;
   padding: 14px; border-bottom: 1px solid #222; }
-#history-close, #math-close { width: 44px; height: 44px; display: flex;
-  align-items: center; justify-content: center; background: var(--key); border: none;
-  border-radius: 10px; color: var(--text); font-size: 22px; cursor: pointer; }
+#history-close, #math-close { font-size: inherit;            /* same size as the MATH/数学 title */
+  width: 1.2em; height: 1.2em; display: flex; align-items: center; justify-content: center;
+  background: var(--key); border: none; border-radius: 6px; color: var(--text);
+  cursor: pointer; padding: 0; }
 #history-close:active, #math-close:active { background: #333; }
 #history-list { list-style: none; overflow-y: auto; flex: 1; }
 #history-list li { padding: 12px 14px; border-bottom: 1px solid #1a1a1a; cursor: pointer; }
