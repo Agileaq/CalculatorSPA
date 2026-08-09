@@ -244,6 +244,37 @@ document.querySelector('#keypad').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-id]');
   if (btn) dispatch(btn.dataset.id);
 });
+// Magnifier loupe: while dragging on touch/pen, float a 2× circle above the
+// finger mirroring #expr around the touch point, so the thin insertion cursor
+// is visible under the finger. Mouse drags are precise enough to skip it.
+const magEl = document.createElement('div');
+magEl.id = 'magnifier';
+magEl.hidden = true;
+const magContent = document.createElement('div');
+magContent.className = 'content';
+magEl.appendChild(magContent);
+document.body.appendChild(magEl);
+const MAG_R = 60;                                   // loupe radius; box size = 2*MAG_R (set inline)
+let magOn = false;
+// Maps the touch point (x,y) to the loupe center and scales the mirrored expr
+// 2× around it. The clone shares #expr's width/font so it reflows identically;
+// transform-origin = touch point keeps that point pinned at loupe center.
+function showMagnifier(x, y) {
+  const rect = exprEl.getBoundingClientRect();
+  const ox = x - rect.left, oy = y - rect.top;       // touch point within expr box
+  let cy = y - 64;                                   // prefer the loupe above the finger
+  if (cy - MAG_R < 4) cy = y + 64;                   // not enough room up there → drop below
+  magEl.style.width = magEl.style.height = (MAG_R * 2) + 'px';
+  magEl.style.left = x + 'px';
+  magEl.style.top = cy + 'px';
+  magContent.style.width = rect.width + 'px';
+  magContent.style.height = rect.height + 'px';
+  magContent.style.transformOrigin = `${ox}px ${oy}px`;
+  magContent.style.transform = `translate(${MAG_R - ox}px, ${MAG_R - oy}px) scale(2)`;
+  magContent.innerHTML = exprEl.innerHTML;           // mirror current render (incl. cursor)
+  magEl.hidden = false;
+}
+function hideMagnifier() { magEl.hidden = true; }
 // Touch expression to move cursor: press-and-hold, drag to position, release
 // (iOS-native long-press cursor drag). Cursor follows the finger live; pointer
 // is captured so the drag survives moving outside #expr without dropping.
@@ -288,6 +319,7 @@ exprEl.addEventListener('pointerdown', (e) => {
   try { exprEl.setPointerCapture(e.pointerId); } catch (_) {}
   editor.setCursor(pos.i, pos.o);                       // pure cursor move (no recall reset, like ‹ › keys)
   render();
+  if (e.pointerType !== 'mouse') { magOn = true; showMagnifier(e.clientX, e.clientY); }
 });
 exprEl.addEventListener('pointermove', (e) => {
   if (!dragging) return;
@@ -295,10 +327,13 @@ exprEl.addEventListener('pointermove', (e) => {
   if (pos === null) return;
   editor.setCursor(pos.i, pos.o);
   render();
+  if (magOn) showMagnifier(e.clientX, e.clientY);
 });
 const endDrag = (e) => {
   if (!dragging) return;
   dragging = false;
+  magOn = false;
+  hideMagnifier();
   try { exprEl.releasePointerCapture(e.pointerId); } catch (_) {}
 };
 exprEl.addEventListener('pointerup', endDrag);

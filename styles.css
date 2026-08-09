@@ -94,3 +94,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 .math-item { border: none; background: var(--key); color: var(--text);
   font-size: 18px; padding: 16px 0; cursor: pointer; }
 .math-item:active { background: #333; }
+
+/* Magnifier loupe (touch-drag cursor assist). Circular 2× mirror of #expr. */
+#magnifier { position: fixed; left: 0; top: 0; border-radius: 50%; overflow: hidden;
+  pointer-events: none; z-index: 30; transform: translate(-50%, -50%);
+  border: 2px solid rgba(255,255,255,.5); background: var(--bg);
+  box-shadow: 0 6px 16px rgba(0,0,0,.6);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+#magnifier .content { font-size: 32px; line-height: 1.4; word-break: break-all; text-align: right;
+  color: var(--text); padding: 16px; box-sizing: border-box; will-change: transform; }
