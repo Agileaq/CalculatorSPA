@@ -42,7 +42,7 @@ export function parse(tokens) {
   function parsePow() {
     const base = parsePostfix();
     if (peek() && peek().type === T.OP && peek().value === '^') {
-      next(); return { kind: 'binary', op: '^', left: base, right: parseUnary() }; // 右结合
+      next(); return { kind: 'binary', op: '^', left: base, right: parseUnary() }; // right-associative
     }
     return base;
   }
@@ -77,6 +77,6 @@ export function parse(tokens) {
 
   if (tokens.length === 0) err();
   const result = parseExpr();
-  if (pos !== tokens.length) err(); // 有剩余记号 = 语法错误
+  if (pos !== tokens.length) err(); // leftover tokens = syntax error
   return result;
 }

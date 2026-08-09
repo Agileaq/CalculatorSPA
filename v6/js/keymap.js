@@ -11,7 +11,7 @@ export const ACTIONS = {
   pow: { kind: 'atom', payload: '^' },
   lparen: { kind: 'atom', payload: '(' }, rparen: { kind: 'atom', payload: ')' },
   pi: { kind: 'atom', payload: 'pi' }, percent: { kind: 'atom', payload: '%' },
-  eex: { kind: 'func', payload: 'eex' }, // EE：由 app 展开为 ×10^
+  eex: { kind: 'func', payload: 'eex' }, // EE: expanded by app into ×10^
   sin: { kind: 'atom', payload: 'sin(' }, cos: { kind: 'atom', payload: 'cos(' },
   tan: { kind: 'atom', payload: 'tan(' }, ln: { kind: 'atom', payload: 'ln(' },
   sqrt: { kind: 'atom', payload: 'sqrt(' },
@@ -23,7 +23,7 @@ export const ACTIONS = {
   history: { kind: 'history' }, sto: { kind: 'sto' },
   varX: { kind: 'atom', payload: 'X' },
   math: { kind: 'math' },
-  // MATH 上下两键：历史回溯（∧ 取更旧、∨ 取更新）
+  // Keys flanking MATH: history recall (∧ older, ∨ newer)
   mathUp: { kind: 'historyUp' }, mathDown: { kind: 'historyDown' },
   fxs: { kind: 'placeholder' },
   grp: { kind: 'placeholder' }, comma: { kind: 'placeholder' },

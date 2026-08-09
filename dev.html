@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -23,13 +23,14 @@
 </head>
 <body>
   <!--
-    DEV 预览页：引用根目录的 js/（工作副本），随你改动实时生效。
-    本地预览用：localhost:8000/dev.html
-    线上正式入口是根 /（自动跳转到当前版本快照 vN/）。
+    DEV preview page: references the root js/ (working copy), live edits reload fresh.
+    For local preview: localhost:8000/dev.html
+    The live production entry is the root / (auto-redirects to the current version snapshot vN/).
   -->
   <div id="calc">
     <header id="statusbar">
       <span id="badge" class="badge">DEG</span>
+      <button id="lang" class="lang" type="button">EN</button>
       <div id="version">v6 · dev</div>
     </header>
 
@@ -40,7 +41,7 @@
 
     <div id="history-panel" hidden>
       <div class="history-head">
-        <span>History</span>
+        <span id="history-title">History</span>
         <button id="history-close" type="button">✕</button>
       </div>
       <ul id="history-list"></ul>
@@ -50,44 +51,44 @@
 
     <div id="math-panel" hidden>
       <div class="history-head">
-        <span>MATH</span>
+        <span id="math-title">MATH</span>
         <button id="math-close" type="button">✕</button>
       </div>
       <div id="math-body"></div>
     </div>
 
     <section id="keypad">
-      <!-- 功能行 1 -->
+      <!-- function row 1 -->
       <button class="key fn shift" data-id="shift" type="button">Shift</button>
       <button class="key fn" data-id="redo" type="button">↷</button>
       <button class="key fn" data-id="mathUp" type="button">∧</button>
       <button class="key fn" data-id="undo" type="button">↶</button>
       <button class="key fn danger" data-id="back" type="button">⌫</button>
-      <!-- 功能行 2 -->
+      <!-- function row 2 -->
       <button class="key fn danger" data-id="ac" type="button">AC</button>
       <button class="key fn" data-id="left" type="button">‹</button>
       <button class="key fn" data-id="math" type="button">MATH</button>
       <button class="key fn" data-id="right" type="button">›</button>
       <button class="key fn" data-id="history" type="button">↺</button>
-      <!-- 功能行 3 -->
+      <!-- function row 3 -->
       <button class="key fn" data-id="fxs" data-placeholder type="button">FXs</button>
       <button class="key fn" data-id="grp" data-placeholder type="button">GRP</button>
       <button class="key fn" data-id="mathDown" type="button">∨</button>
       <button class="key fn" data-id="comma" data-placeholder type="button">, ,</button>
       <button class="key fn" data-id="sto" type="button">STO</button>
-      <!-- 科学函数行 1 -->
+      <!-- scientific row 1 -->
       <button class="key sci" data-id="pi" type="button">π</button>
       <button class="key sci" data-id="ln" type="button">Ln</button>
       <button class="key sci" data-id="sin" type="button">Sin</button>
       <button class="key sci" data-id="cos" type="button">Cos</button>
       <button class="key sci" data-id="tan" type="button">Tan</button>
-      <!-- 科学函数行 2 -->
+      <!-- scientific row 2 -->
       <button class="key sci" data-id="varX" type="button">X</button>
       <button class="key sci" data-id="square" type="button">X²</button>
       <button class="key sci" data-id="sqrt" type="button">√</button>
       <button class="key sci" data-id="lparen" type="button">(</button>
       <button class="key sci" data-id="rparen" type="button">)</button>
-      <!-- 数字区 -->
+      <!-- numeric pad -->
       <button class="key num" data-id="7" type="button">7</button>
       <button class="key num" data-id="8" type="button">8</button>
       <button class="key num" data-id="9" type="button">9</button>
@@ -115,7 +116,7 @@
 
   <script type="module" src="js/app.js"></script>
   <script>
-    // dev 预览不注册 service worker，确保每次都加载最新的工作副本代码。
+    // dev preview does not register the service worker, so every reload fetches the fresh working copy.
   </script>
 </body>
 </html>

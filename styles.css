@@ -2,6 +2,7 @@
   --bg: #000; --panel: #0a0a0a; --key: #1c1c1e; --key-num: #2a2a2c;
   --text: #fff; --muted: #8a8a8e; --yellow: #f5c518; --red: #ff453a;
   --blue: #0a84ff; --equals: #2a2a2c;
+  --purple: #af52de; --cyan: #5ac8fa;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
@@ -14,6 +15,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 .badge { background: var(--blue); color: #fff; font-size: 12px; font-weight: 700;
   padding: 2px 8px; border-radius: 6px; letter-spacing: 1px; }
 .badge.rad { background: var(--red); }
+#lang.lang { background: transparent; border: 1px solid var(--cyan); color: var(--cyan);
+  font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px;
+  letter-spacing: 1px; cursor: pointer; }
+#lang.lang:active { background: #062430; }
 #version { background: transparent; border: 1px solid var(--yellow); color: var(--yellow);
   font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px;
   letter-spacing: 1px; }
@@ -45,7 +50,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 .key.active { outline: 2px solid var(--yellow); outline-offset: -2px; }
 .key[data-id="left"], .key[data-id="right"], .key[data-id="redo"], .key[data-id="undo"],
 .key[data-id="mathUp"], .key[data-id="mathDown"] { color: var(--blue); }
-/* 历史按钮：用图标替换 ↺ 字形 */
+/* History button: icon replaces the ↺ glyph */
 .key[data-id="history"] {
   color: transparent;
   background: var(--panel) url('icons/history.png') center / 28px 28px no-repeat;
@@ -68,11 +73,11 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
   font-size: 14px; z-index: 20; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .toast.show { opacity: 1; }
 
-/* Shift 激活态：带第二功能的键高亮 */
+/* Shift active state: highlight keys that have a second function */
 #keypad.shift-active .key.has-shift { background: #2a2410; }
 #keypad.shift-active .key.has-shift .second { color: #ffd633; font-weight: 700; }
 
-/* MATH 面板（复用历史面板覆盖层视觉） */
+/* MATH panel (reuses the history-panel overlay visual) */
 #math-panel { position: absolute; inset: 0; background: rgba(0,0,0,.96); z-index: 10;
   display: flex; flex-direction: column; }
 #math-body { overflow-y: auto; flex: 1; padding: 8px 0 16px; }

@@ -9,8 +9,8 @@ export class AppState {
   get ans() { return this._ans; }
   set ans(v) { this._ans = v; }
 
-  // 历史回溯光标：null 表示未在回溯中，否则指向 store.history 的索引
-  // 进入回溯（按 ∧）时置为 0（最新条目）；按 ∨ 越过最新则置为 null
+  // History recall cursor: null = not replaying, otherwise an index into store.history.
+  // Entering recall (pressing ∧) sets it to 0 (newest entry); pressing ∨ past newest sets it to null.
   get recall() { return this._recall; }
   set recall(v) { this._recall = v; }
   resetRecall() { this._recall = null; }

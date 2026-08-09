@@ -5,14 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Scientific Calculator</title>
   <!--
-    版本入口页：访问根路径会自动跳转到「当前版本」的快照目录。
-    发新版本时只需改下面两处 v6 为新版本号（如 v7），并新建对应的 v7/ 快照。
-    旧版本目录保留，仍可通过 /v5/、/v6/ 等地址访问、回滚。
+    Version gate page: visiting the root path redirects to the current
+    version snapshot directory. To release a new version, change the two
+    v6 markers below to the new number (e.g. v7) and create the matching
+    v7/ snapshot. Old snapshot dirs are preserved for rollback.
 
-    ====== 当前版本：v6 ======
+    ====== Current version: v6 ======
   -->
   <meta http-equiv="refresh" content="0; url=v6/">
-  <!-- ====== 当前版本：v6 ====== -->
+  <!-- ====== Current version: v6 ====== -->
   <style>
     html, body { height: 100%; margin: 0; background: #000; color: #fff;
       font-family: -apple-system, system-ui, sans-serif; }
@@ -28,10 +29,10 @@
 <body>
   <div id="gate">
     <div class="name">Scientific Calculator</div>
-    <div class="ver">版本 <b>v6</b> · 跳转中…</div>
-    <div class="hint">未自动跳转可 <a href="v6/">点此进入</a></div>
+    <div class="ver">version <b>v6</b> · redirecting…</div>
+    <div class="hint">Not redirected? <a href="v6/">Enter here</a></div>
   </div>
-  <!-- 用 replace 跳转：回退键不会被卡在本入口页 -->
+  <!-- replace-redirect: back button not trapped on the gate page -->
   <script>location.replace('v6/');</script>
 </body>
 </html>

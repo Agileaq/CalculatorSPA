@@ -15,6 +15,7 @@
   import { AppState } from '../js/state.js';
   import { ACTIONS, SHIFT_ACTIONS, KEYBOARD } from '../js/keymap.js';
   import { MATH_CATALOG } from '../js/mathmenu.js';
+  import { LOCALES, getLocale, setLocale, cycleLocale, getLocaleMeta, t } from '../js/i18n.js';
 
   function memStorage() {
     const m = {};
@@ -306,7 +307,7 @@
 
   test('MATH_CATALOG 分类齐全', () => {
     const titles = MATH_CATALOG.map(g => g.title);
-    assertEqual(titles.join(','), '三角函数,对数指数,幂与根,组合数,常数/其他');
+    assertEqual(titles.join(','), 'math.trig,math.logexp,math.powroot,math.comb,math.const');
   });
   test('MATH_CATALOG 每条目有 label 与 action', () => {
     for (const g of MATH_CATALOG) for (const it of g.items) {
@@ -320,6 +321,60 @@
       if (it.action.kind === 'atom') {
         lex([it.action.payload]); // 不抛异常即通过
       }
+    }
+  });
+
+  // ---- i18n ----
+  test('i18n 含 6 种联合国官方语言', () => {
+    const codes = LOCALES.map(l => l.code).join(',');
+    assertEqual(codes, 'en,zh,fr,es,ru,ar');
+  });
+  test('i18n 每种语言有 dir 与 label', () => {
+    for (const l of LOCALES) {
+      if (!l.dir || !l.label) throw new Error('bad locale ' + JSON.stringify(l));
+    }
+  });
+  test('i18n ar 为 RTL，其余 LTR', () => {
+    assertEqual(LOCALES.find(l => l.code === 'ar').dir, 'rtl');
+    for (const l of LOCALES) if (l.code !== 'ar') assertEqual(l.dir, 'ltr');
+  });
+  test('i18n setLocale 拒绝未知 code', () => {
+    setLocale('en');
+    const before = getLocale();
+    assertEqual(setLocale('bogus'), false);
+    assertEqual(getLocale(), before);
+  });
+  test('i18n cycleLocale 遍历全部并回到起点', () => {
+    setLocale('en');
+    const seen = [];
+    for (let i = 0; i < 6; i++) seen.push(cycleLocale().code);
+    assertEqual(seen.join(','), 'zh,fr,es,ru,ar,en');
+    assertEqual(getLocale(), 'en');
+  });
+  test('i18n t() 按当前语言取值', () => {
+    setLocale('en'); assertEqual(t('historyTitle'), 'History');
+    setLocale('zh'); assertEqual(t('historyTitle'), '历史记录');
+    setLocale('fr'); assertEqual(t('historyTitle'), 'Historique');
+    setLocale('ar'); assertEqual(t('historyTitle'), 'السجل');
+    setLocale('en');
+  });
+  test('i18n t() 占位符替换', () => {
+    setLocale('zh'); assertEqual(t('storedIn', { name: 'A' }), '已存入 A');
+    setLocale('en'); assertEqual(t('storedIn', { name: 'Q' }), 'Stored to Q');
+  });
+  test('i18n t() 未知 key 回退到 key 本身', () => {
+    assertEqual(t('no.such.key'), 'no.such.key');
+  });
+  test('i18n getLocaleMeta 返回当前语言元信息', () => {
+    setLocale('ar');
+    assertEqual(getLocaleMeta().code, 'ar');
+    assertEqual(getLocaleMeta().dir, 'rtl');
+    setLocale('en');
+  });
+  test('i18n MATH 分组 title 可被 t() 解析', () => {
+    for (const g of MATH_CATALOG) {
+      const s = t(g.title);
+      if (!s || s === g.title) throw new Error('unresolved title key ' + g.title);
     }
   });
 

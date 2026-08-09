@@ -7,7 +7,7 @@ const fromRad = (x, mode) => (mode === 'DEG' ? (x * 180) / Math.PI : x);
 export function evaluate(node, ctx) {
   const n = evalNode(node, ctx);
   if (!Number.isFinite(n)) throw new CalcError('Math Error');
-  return n === 0 ? 0 : n; // 归一化 -0
+  return n === 0 ? 0 : n; // normalize -0
 }
 
 function evalNode(node, ctx) {

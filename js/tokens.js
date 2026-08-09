@@ -26,7 +26,7 @@ export class Editor {
       this._atoms[this._cursor - 1] = left + ch;
     } else if (right !== undefined && isNumAtom(right) &&
         !(ch === '.' && right.includes('.'))) {
-      this._atoms[this._cursor] = ch + right; // 前插并入右侧数字，光标不动
+      this._atoms[this._cursor] = ch + right; // prepend and merge into right number; cursor stays
     } else {
       this._atoms.splice(this._cursor, 0, ch);
       this._cursor++;

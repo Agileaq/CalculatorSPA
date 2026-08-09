@@ -5,6 +5,7 @@ import { Store } from './history.js';
 import { evaluate } from './engine.js';
 import { ACTIONS, SHIFT_ACTIONS, KEYBOARD } from './keymap.js';
 import { MATH_CATALOG } from './mathmenu.js';
+import { t, cycleLocale, getLocaleMeta } from './i18n.js';
 
 const editor = new Editor();
 const state = new AppState();
@@ -14,6 +15,7 @@ const $ = (s) => document.querySelector(s);
 const exprEl = $('#expr'), resultEl = $('#result'), badgeEl = $('#badge');
 const toastEl = $('#toast'), panel = $('#history-panel'), list = $('#history-list');
 const mathPanel = $('#math-panel'), mathBody = $('#math-body');
+const langEl = $('#lang'), historyTitleEl = $('#history-title'), mathTitleEl = $('#math-title');
 
 const DISPLAY = {
   '*': '×', '/': '÷', 'pi': 'π', 'sqrt(': '√(',
@@ -49,19 +51,29 @@ function updateShift() {
   document.querySelector('#keypad').classList.toggle('shift-active', state.shift);
 }
 
-// 历史回溯：∧ 取更旧、∨ 取更新。null 表示未进入回溯。
+// Apply current locale: button short label + panel titles + <html lang/dir> (RTL for ar).
+function applyLocale() {
+  const meta = getLocaleMeta();
+  if (langEl) langEl.textContent = meta.label;
+  if (historyTitleEl) historyTitleEl.textContent = t('historyTitle');
+  if (mathTitleEl) mathTitleEl.textContent = t('mathTitle');
+  const html = document.documentElement;
+  html.lang = meta.code; html.dir = meta.dir;
+}
+
+// History recall: ∧ older, ∨ newer. null = not replaying.
 function recallUp() {
   const hist = store.history;
-  if (!hist.length) { showToast('无历史记录'); return; }
+  if (!hist.length) { showToast(t('noHistory')); return; }
   const next = state.recall === null ? 0 : state.recall + 1;
-  if (next >= hist.length) { showToast('已是更早记录'); return; }
+  if (next >= hist.length) { showToast(t('noMoreHistory')); return; }
   state.recall = next;
   editor.setAtoms(hist[next].atoms);
   resultEl.textContent = '= ' + hist[next].display;
   resultEl.classList.remove('error');
 }
 function recallDown() {
-  if (state.recall === null) return; // 未在回溯中：∨ 不做破坏
+  if (state.recall === null) return; // not replaying: ∨ is a safe no-op
   const hist = store.history;
   const next = state.recall - 1;
   if (next < 0) { state.resetRecall(); editor.clear(); resultEl.textContent = ''; return; }
@@ -87,7 +99,7 @@ function injectShiftLabels() {
 function openMath() {
   mathBody.innerHTML = '';
   for (const group of MATH_CATALOG) {
-    const h = document.createElement('div'); h.className = 'math-group'; h.textContent = group.title;
+    const h = document.createElement('div'); h.className = 'math-group'; h.textContent = t(group.title);
     mathBody.appendChild(h);
     const grid = document.createElement('div'); grid.className = 'math-items';
     for (const item of group.items) {
@@ -132,14 +144,14 @@ function openHistory() {
 
 function doSto() {
   const r = evaluate(editor.atoms, { angleMode: state.angleMode, ans: state.ans, vars: store.vars });
-  if (!r.ok) { showToast('无有效值可存储'); return; }
-  const name = (prompt('存入变量名 (A-Z)：') || '').trim().toUpperCase();
-  if (!/^[A-Z]$/.test(name)) { showToast('变量名需为 A-Z'); return; }
+  if (!r.ok) { showToast(t('noValueToStore')); return; }
+  const name = (prompt(t('stoPrompt')) || '').trim().toUpperCase();
+  if (!/^[A-Z]$/.test(name)) { showToast(t('invalidVarName')); return; }
   store.setVar(name, r.value);
-  showToast(`已存入 ${name}`);
+  showToast(t('storedIn', { name }));
 }
 
-// 只处理「插入到编辑区」的动作；调用方负责 render()
+// Handles only "insert into editor" actions; caller calls render().
 function execAction(action) {
   switch (action.kind) {
     case 'digit': editor.insertDigit(action.payload); break;
@@ -164,9 +176,9 @@ const INSERT_KINDS = new Set(['digit', 'atom', 'func', 'ans']);
 
 function dispatch(id) {
   const shifted = state.shift ? SHIFT_ACTIONS[id] : undefined;
-  // Shift 开启且该键无第二功能：占位提示并清除 shift（shift 键本身除外）
+  // Shift on but key has no second function: toast unavailable and clear shift (shift key itself excluded)
   if (state.shift && id !== 'shift' && !shifted) {
-    showToast('该功能暂未开放');
+    showToast(t('unavailable'));
     state.clearShift(); updateShift();
     return;
   }
@@ -176,7 +188,7 @@ function dispatch(id) {
   if (INSERT_KINDS.has(action.kind)) {
     execAction(action);
     state.clearShift(); updateShift();
-    state.resetRecall(); // 任意插入都会退出回溯，下次 ∧ 从最新开始
+    state.resetRecall(); // any insert exits recall; next ∧ starts fresh from newest
     render();
     return;
   }
@@ -196,29 +208,32 @@ function dispatch(id) {
     case 'sto': doSto(); return;
     case 'historyUp': recallUp(); updateShift(); render(); return;
     case 'historyDown': recallDown(); updateShift(); render(); return;
-    case 'placeholder': showToast('该功能暂未开放'); return;
+    case 'placeholder': showToast(t('unavailable')); return;
   }
   state.clearShift(); updateShift();
   render();
 }
 
-// 按钮点击
+// Button clicks
 document.querySelector('#keypad').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-id]');
   if (btn) dispatch(btn.dataset.id);
 });
-// 徽标点击切换角度
+// Badge click toggles angle mode
 badgeEl.addEventListener('click', () => dispatch('deg'));
-// 历史关闭
+// Language switch: cycle to the next official UN language
+langEl.addEventListener('click', () => { cycleLocale(); applyLocale(); });
+// History close
 document.querySelector('#history-close').addEventListener('click', () => { panel.hidden = true; });
-// MATH 关闭
+// MATH close
 document.querySelector('#math-close').addEventListener('click', () => { mathPanel.hidden = true; });
-// 物理键盘
+// Physical keyboard
 window.addEventListener('keydown', (e) => {
   const id = KEYBOARD[e.key];
   if (id) { e.preventDefault(); dispatch(id); }
 });
 
-// 初始化
+// Init
 injectShiftLabels();
+applyLocale();
 updateBadge(); updateShift(); render();
