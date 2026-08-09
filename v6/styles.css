@@ -96,21 +96,27 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 .math-item:active { background: #333; }
 
 /* Magnifier loupe (touch-drag cursor assist). Sits directly above #expr,
-   centered on the cursor. Each side is 4.5ch wide (1ch = '0' advance at the
-   loupe's own 30px font), so 4 full chars + a clipped half of the 5th show;
-   the border cuts the 5th char on its midline. Width is 9ch total — derived
-   from ch, no hand-picked px — and the box auto-sizes to that. */
-#magnifier { position: fixed; left: 0; top: 0;
+   the magnified cursor overlaying the real one. Each side is a max-4.5ch
+   window over the full expression: ≤4 chars + a clipped half of the 5th show
+   (border cuts the 5th on its midline). A side with no content collapses to
+   width 0 — no blank — so at the start/end the opposite side's half-char
+   peeks at its border, symmetric at both ends. The loupe shrink-wraps its
+   content (inline-flex), so its width tracks the content, never a fixed px. */
+#magnifier { position: fixed; left: 0; top: 0; display: inline-flex; align-items: stretch;
   border-radius: 6px; overflow: hidden; pointer-events: none; z-index: 30;
-  transform: translate(-50%, -100%); border: 2px solid rgba(255,255,255,.5);
-  background: var(--bg); box-shadow: 0 6px 16px rgba(0,0,0,.6); }
-#magnifier .content { position: relative; width: 9ch; height: 30px;
-  font-size: 30px; line-height: 1; color: var(--text);
+  border: 2px solid rgba(255,255,255,.5); background: var(--bg);
+  box-shadow: 0 6px 16px rgba(0,0,0,.6); }
+#magnifier .content { display: inline-flex; align-items: stretch; height: 38px;
+  font-size: 38px; line-height: 1; color: var(--text);
   font-family: -apple-system, system-ui, sans-serif; white-space: nowrap; }
 #magnifier .content .left, #magnifier .content .right {
-  position: absolute; top: 0; width: 4.5ch; overflow: hidden; }
-#magnifier .content .left { right: 50%; text-align: right; }       /* grows leftward from center, clipped at the border */
-#magnifier .content .right { left: 50%; text-align: left; }       /* grows rightward from center, clipped at the border */
-#magnifier .content .cursor { position: absolute; left: 50%; top: 0;
-  transform: translateX(-50%); display: inline-block; width: 2px; height: 30px;
-  background: var(--text); z-index: 1; }
+  max-width: 4.5ch; overflow: hidden; display: inline-block; height: 38px; }
+/* Each side holds the chars nearest the cursor and clips at its far end.
+   .left grows leftward from the cursor: text-align:right pins its right edge
+   to the cursor and overflow:hidden drops whatever spills past 4.5ch on the
+   far (left) side. .right grows rightward: text-align:left pins to the cursor
+   on the left, clips the far (right) side. No RTL needed. */
+#magnifier .content .left { text-align: right; }
+#magnifier .content .right { text-align: left; }
+#magnifier .content .cursor { display: inline-block; width: 2px; height: 38px;
+  background: var(--text); flex: 0 0 auto; }
