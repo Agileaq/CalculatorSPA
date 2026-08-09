@@ -254,7 +254,7 @@ const magContent = document.createElement('div');
 magContent.className = 'content';
 magEl.appendChild(magContent);
 document.body.appendChild(magEl);
-const MAG_R = 60;                                   // loupe radius; box size = 2*MAG_R (set inline)
+const MAG_W = 220, MAG_H = 90;                        // horizontal loupe (border-radius 6px in CSS)
 let magOn = false;
 // Maps the touch point (x,y) to the loupe center and scales the mirrored expr
 // 2× around it. The clone shares #expr's width/font so it reflows identically;
@@ -262,15 +262,16 @@ let magOn = false;
 function showMagnifier(x, y) {
   const rect = exprEl.getBoundingClientRect();
   const ox = x - rect.left, oy = y - rect.top;       // touch point within expr box
-  let cy = y - 64;                                   // prefer the loupe above the finger
-  if (cy - MAG_R < 4) cy = y + 64;                   // not enough room up there → drop below
-  magEl.style.width = magEl.style.height = (MAG_R * 2) + 'px';
+  let cy = y - MAG_H / 2 - 8;                        // prefer the loupe above the finger
+  if (cy - MAG_H / 2 < 4) cy = y + MAG_H / 2 + 8;    // not enough room up there → drop below
+  magEl.style.width = MAG_W + 'px';
+  magEl.style.height = MAG_H + 'px';
   magEl.style.left = x + 'px';
   magEl.style.top = cy + 'px';
   magContent.style.width = rect.width + 'px';
   magContent.style.height = rect.height + 'px';
   magContent.style.transformOrigin = `${ox}px ${oy}px`;
-  magContent.style.transform = `translate(${MAG_R - ox}px, ${MAG_R - oy}px) scale(2)`;
+  magContent.style.transform = `translate(${MAG_W / 2 - ox}px, ${MAG_H / 2 - oy}px) scale(2)`;
   magContent.innerHTML = exprEl.innerHTML;           // mirror current render (incl. cursor)
   magEl.hidden = false;
 }
