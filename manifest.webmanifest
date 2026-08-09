@@ -1,6 +1,6 @@
 {
   "name": "Scientific Calculator",
-  "short_name": "Calc",
+  "short_name": "Calculator",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
