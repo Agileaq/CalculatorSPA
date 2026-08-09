@@ -1,0 +1,11 @@
+# OS
+.DS_Store
+._*
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# The icon renderer is a one-shot local build tool, never committed.
+# (kept under /tmp/iconrender by convention; this guards against accidents)
+node_modules/
