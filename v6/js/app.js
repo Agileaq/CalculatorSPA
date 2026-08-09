@@ -244,9 +244,11 @@ document.querySelector('#keypad').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-id]');
   if (btn) dispatch(btn.dataset.id);
 });
-// Magnifier loupe: while dragging on touch/pen, float a 2× circle above the
-// finger mirroring #expr around the touch point, so the thin insertion cursor
-// is visible under the finger. Mouse drags are precise enough to skip it.
+// Magnifier loupe: while dragging on touch/pen, float a magnified horizontal
+// window directly above #expr, centered on the cursor (not the finger) so the
+// magnified cursor overlays the real one. Shows only the chars around the
+// cursor (≤3 each side) on a single line — no vertical context. Mouse drags are
+// precise enough to skip it.
 const magEl = document.createElement('div');
 magEl.id = 'magnifier';
 magEl.hidden = true;
@@ -254,25 +256,41 @@ const magContent = document.createElement('div');
 magContent.className = 'content';
 magEl.appendChild(magContent);
 document.body.appendChild(magEl);
-const MAG_W = 220, MAG_H = 90;                        // horizontal loupe (border-radius 6px in CSS)
+const MAG_W = 200, MAG_H = 64, MAG_N = 3;               // window: ≤3 chars each side, 1.5× tall
 let magOn = false;
-// Maps the touch point (x,y) to the loupe center and scales the mirrored expr
-// 2× around it. The clone shares #expr's width/font so it reflows identically;
-// transform-origin = touch point keeps that point pinned at loupe center.
-function showMagnifier(x, y) {
+// Build the ≤MAG_N chars left and right of the cursor from the display string.
+// Cursor can sit at an atom boundary (offset 0) or inside a number atom (offset o).
+function loupeWindow() {
+  const atoms = editor.atoms, k = editor.cursor, o = editor.offset;
+  let s = '', curIdx = 0;
+  for (let i = 0; i < atoms.length; i++) {
+    if (i === k && o > 0) curIdx = s.length + o;        // cursor inside this number atom
+    else if (i === k) curIdx = s.length;               // cursor before this atom
+    s += showAtom(atoms[i]);
+  }
+  if (k === atoms.length) curIdx = s.length;            // cursor at end
+  return {
+    left: s.slice(Math.max(0, curIdx - MAG_N), curIdx),
+    right: s.slice(curIdx, Math.min(s.length, curIdx + MAG_N)),
+  };
+}
+// Place the loupe above #expr, horizontally centered on the real cursor's X.
+function showMagnifier() {
+  const cur = exprEl.querySelector('.cursor');
   const rect = exprEl.getBoundingClientRect();
-  const ox = x - rect.left, oy = y - rect.top;       // touch point within expr box
-  let cy = y - MAG_H / 2 - 8;                        // prefer the loupe above the finger
-  if (cy - MAG_H / 2 < 4) cy = y + MAG_H / 2 + 8;    // not enough room up there → drop below
-  magEl.style.width = MAG_W + 'px';
-  magEl.style.height = MAG_H + 'px';
-  magEl.style.left = x + 'px';
-  magEl.style.top = cy + 'px';
-  magContent.style.width = rect.width + 'px';
-  magContent.style.height = rect.height + 'px';
-  magContent.style.transformOrigin = `${ox}px ${oy}px`;
-  magContent.style.transform = `translate(${MAG_W / 2 - ox}px, ${MAG_H / 2 - oy}px) scale(2)`;
-  magContent.innerHTML = exprEl.innerHTML;           // mirror current render (incl. cursor)
+  let cx = cur ? cur.getBoundingClientRect().left : rect.left + rect.width / 2;
+  const vw = window.innerWidth;
+  cx = Math.max(MAG_W / 2, Math.min(cx, vw - MAG_W / 2));   // keep on screen at the edges
+  let top = rect.top - MAG_H - 6;                            // directly above the digit line
+  if (top < 2) top = 2;                                      // clamp into the viewport
+  magEl.style.left = cx + 'px';
+  magEl.style.top = top + 'px';
+  const { left, right } = loupeWindow();
+  magContent.textContent = '';
+  const l = document.createElement('span'); l.className = 'left'; l.textContent = left;
+  const c = document.createElement('span'); c.className = 'cursor';
+  const r = document.createElement('span'); r.className = 'right'; r.textContent = right;
+  magContent.append(l, c, r);
   magEl.hidden = false;
 }
 function hideMagnifier() { magEl.hidden = true; }
@@ -320,7 +338,7 @@ exprEl.addEventListener('pointerdown', (e) => {
   try { exprEl.setPointerCapture(e.pointerId); } catch (_) {}
   editor.setCursor(pos.i, pos.o);                       // pure cursor move (no recall reset, like ‹ › keys)
   render();
-  if (e.pointerType !== 'mouse') { magOn = true; showMagnifier(e.clientX, e.clientY); }
+  if (e.pointerType !== 'mouse') { magOn = true; showMagnifier(); }
 });
 exprEl.addEventListener('pointermove', (e) => {
   if (!dragging) return;
@@ -328,7 +346,7 @@ exprEl.addEventListener('pointermove', (e) => {
   if (pos === null) return;
   editor.setCursor(pos.i, pos.o);
   render();
-  if (magOn) showMagnifier(e.clientX, e.clientY);
+  if (magOn) showMagnifier();
 });
 const endDrag = (e) => {
   if (!dragging) return;

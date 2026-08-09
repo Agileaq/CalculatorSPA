@@ -95,15 +95,18 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
   font-size: 18px; padding: 16px 0; cursor: pointer; }
 .math-item:active { background: #333; }
 
-/* Magnifier loupe (touch-drag cursor assist). Horizontal 2× mirror of #expr. */
-#magnifier { position: fixed; left: 0; top: 0; width: 220px; height: 90px;
+/* Magnifier loupe (touch-drag cursor assist). Sits directly above #expr,
+   centered on the cursor. Shows ≤3 chars left + cursor + ≤3 chars right, one line. */
+#magnifier { position: fixed; left: 0; top: 0; width: 200px; height: 64px;
   border-radius: 6px; overflow: hidden; pointer-events: none; z-index: 30;
-  transform: translate(-50%, -50%); border: 2px solid rgba(255,255,255,.5);
+  transform: translate(-50%, 0); border: 2px solid rgba(255,255,255,.5);
   background: var(--bg); box-shadow: 0 6px 16px rgba(0,0,0,.6); }
-#magnifier .content { font-size: 32px; line-height: 1.4; word-break: break-all; text-align: right;
-  color: var(--text); padding: 16px; box-sizing: border-box; will-change: transform; }
-/* #expr .cursor (above) doesn't match the cursor cloned into the loupe (it's
-   under #magnifier, not #expr). Give the loupe's cursor its own solid bar so it
-   shows under the finger during the drag; not blinking avoids flicker while tracking. */
-#magnifier .content .cursor { display: inline-block; width: 2px; height: 32px;
-  background: var(--text); vertical-align: middle; }
+#magnifier .content { display: flex; align-items: center; justify-content: center;
+  height: 100%; padding: 0 4px; box-sizing: border-box;
+  font-size: 30px; line-height: 1; color: var(--text);
+  font-family: -apple-system, system-ui, sans-serif; white-space: nowrap; }
+#magnifier .content .left, #magnifier .content .right { min-width: 0; text-align: center; }
+/* The loupe's cursor sits at flex center; the equal left/right padding below
+   keeps it visually centered over the real cursor, not stuck against a side. */
+#magnifier .content .cursor { display: inline-block; width: 2px; height: 36px;
+  background: var(--text); margin: 0 1px; flex: 0 0 auto; }
