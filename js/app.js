@@ -256,9 +256,9 @@ const magContent = document.createElement('div');
 magContent.className = 'content';
 magEl.appendChild(magContent);
 document.body.appendChild(magEl);
-const MAG_W = 220, MAG_N = 4;                            // window: ≤4 chars each side (+0.5 via overflow clip)
+const MAG_SLICE = 5;                                      // chars sliced each side; CSS width 4.5ch shows 4 + half of 5th
 let magOn = false;
-// Build the ≤MAG_N chars left and right of the cursor from the display string.
+// Build the ≤MAG_SLICE chars left and right of the cursor from the display string.
 // Cursor can sit at an atom boundary (offset 0) or inside a number atom (offset o).
 function loupeWindow() {
   const atoms = editor.atoms, k = editor.cursor, o = editor.offset;
@@ -270,8 +270,8 @@ function loupeWindow() {
   }
   if (k === atoms.length) curIdx = s.length;            // cursor at end
   return {
-    left: s.slice(Math.max(0, curIdx - MAG_N), curIdx),
-    right: s.slice(curIdx, Math.min(s.length, curIdx + MAG_N)),
+    left: s.slice(Math.max(0, curIdx - MAG_SLICE), curIdx),
+    right: s.slice(curIdx, Math.min(s.length, curIdx + MAG_SLICE)),
   };
 }
 // Place the loupe above #expr, horizontally centered on the real cursor's X.
@@ -280,9 +280,14 @@ function showMagnifier() {
   const rect = exprEl.getBoundingClientRect();
   let cx = cur ? cur.getBoundingClientRect().left : rect.left + rect.width / 2;
   const vw = window.innerWidth;
-  cx = Math.max(MAG_W / 2, Math.min(cx, vw - MAG_W / 2));   // keep on screen at the edges
-  let top = rect.top - 6;                                   // directly above the digit line (loupe height = content)
+  let top = rect.top - 6;                                   // directly above the digit line
   if (top < 2) top = 2;                                     // clamp into the viewport
+  // Width is ch-based (fixed by CSS), independent of content. Park off-screen,
+  // unhide, measure the real px width, then clamp cx so the loupe stays on-screen.
+  magEl.style.left = '-9999px';
+  magEl.hidden = false;
+  const w = magEl.offsetWidth || 160;
+  cx = Math.max(w / 2, Math.min(cx, vw - w / 2));
   magEl.style.left = cx + 'px';
   magEl.style.top = top + 'px';
   const { left, right } = loupeWindow();
@@ -291,7 +296,6 @@ function showMagnifier() {
   const c = document.createElement('span'); c.className = 'cursor';
   const r = document.createElement('span'); r.className = 'right'; r.textContent = right;
   magContent.append(l, c, r);
-  magEl.hidden = false;
 }
 function hideMagnifier() { magEl.hidden = true; }
 // Touch expression to move cursor: press-and-hold, drag to position, release
