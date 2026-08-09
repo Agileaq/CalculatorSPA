@@ -243,6 +243,12 @@
     const s = new AppState(); s.ans = 42;
     assertEqual(s.ans, 42);
   });
+  test('recall 默认 null', () => assertEqual(new AppState().recall, null));
+  test('recall 读写与重置', () => {
+    const s = new AppState();
+    s.recall = 2; assertEqual(s.recall, 2);
+    s.resetRecall(); assertEqual(s.recall, null);
+  });
 
   test('数字键动作', () => {
     assertEqual(ACTIONS['7'].kind, 'digit');
@@ -258,10 +264,16 @@
   test('占位键', () => {
     assertEqual(ACTIONS.fxs.kind, 'placeholder');
   });
+  test('mathUp/mathDown 非占位', () => {
+    assertEqual(ACTIONS.mathUp.kind, 'historyUp');
+    assertEqual(ACTIONS.mathDown.kind, 'historyDown');
+  });
   test('物理键映射', () => {
     assertEqual(KEYBOARD['Enter'], 'equals');
     assertEqual(KEYBOARD['Backspace'], 'back');
     assertEqual(KEYBOARD['*'], 'mul');
+    assertEqual(KEYBOARD['ArrowUp'], 'mathUp');
+    assertEqual(KEYBOARD['ArrowDown'], 'mathDown');
   });
   test('Shift 第二功能 0→%', () => {
     assertEqual(SHIFT_ACTIONS['0'].kind, 'atom');
