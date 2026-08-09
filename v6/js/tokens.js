@@ -48,6 +48,8 @@ export class Editor {
 
   moveLeft() { if (this._cursor > 0) this._cursor--; }
   moveRight() { if (this._cursor < this._atoms.length) this._cursor++; }
+  // Absolute cursor move (touch-to-position). No snapshot, like moveLeft/moveRight.
+  setCursor(i) { this._cursor = Math.max(0, Math.min(this._atoms.length, i)); }
 
   clear() { this._snapshot(); this._atoms = []; this._cursor = 0; }
 

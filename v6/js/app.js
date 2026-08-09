@@ -31,7 +31,11 @@ function render() {
     if (i === editor.cursor) {
       const c = document.createElement('span'); c.className = 'cursor'; exprEl.appendChild(c);
     }
-    if (i < atoms.length) exprEl.appendChild(document.createTextNode(showAtom(atoms[i])));
+    if (i < atoms.length) {
+      const t = document.createElement('span'); t.className = 'tok'; t.dataset.i = i;
+      t.textContent = showAtom(atoms[i]);
+      exprEl.appendChild(t);
+    }
   }
 }
 
@@ -219,6 +223,54 @@ document.querySelector('#keypad').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-id]');
   if (btn) dispatch(btn.dataset.id);
 });
+// Touch expression to move cursor: press-and-hold, drag to position, release
+// (iOS-native long-press cursor drag). Cursor follows the finger live; pointer
+// is captured so the drag survives moving outside #expr without dropping.
+function nearestBoundary(x, y) {
+  const toks = exprEl.querySelectorAll('.tok');
+  if (!toks.length) return null;                      // empty expr: nothing to do
+  let best = null, bestLine = Infinity, bestDx = Infinity;
+  // Nearest line first (smallest vertical gap), then nearest x on that line.
+  // Each token's left/right edge is an atom boundary → cursor snaps there (never mid-atom).
+  for (const tok of toks) {
+    const i = +tok.dataset.i;
+    for (const rect of tok.getClientRects()) {
+      const dy = Math.max(0, rect.top - y, y - rect.bottom); // 0 when y is on this line
+      if (dy > bestLine) continue;                    // a nearer line already found
+      for (const [ex, pos] of [[rect.left, i], [rect.right, i + 1]]) {
+        const dx = Math.abs(ex - x);
+        if (dy < bestLine || (dy === bestLine && dx < bestDx)) { bestLine = dy; bestDx = dx; best = pos; }
+      }
+    }
+  }
+  return best;                                        // atom index (0..atoms.length)
+}
+let dragging = false;
+exprEl.addEventListener('pointerdown', (e) => {
+  // Only touch/pen/mouse primary press starts a drag (not e.g. right-click).
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const pos = nearestBoundary(e.clientX, e.clientY);
+  if (pos === null) return;
+  e.preventDefault();                                 // suppress text-selection long-press
+  dragging = true;
+  try { exprEl.setPointerCapture(e.pointerId); } catch (_) {}
+  editor.setCursor(pos);                              // pure cursor move (no recall reset, like ‹ › keys)
+  render();
+});
+exprEl.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  const pos = nearestBoundary(e.clientX, e.clientY);
+  if (pos === null) return;
+  editor.setCursor(pos);
+  render();
+});
+const endDrag = (e) => {
+  if (!dragging) return;
+  dragging = false;
+  try { exprEl.releasePointerCapture(e.pointerId); } catch (_) {}
+};
+exprEl.addEventListener('pointerup', endDrag);
+exprEl.addEventListener('pointercancel', endDrag);
 // Badge click toggles angle mode
 badgeEl.addEventListener('click', () => dispatch('deg'));
 // Language switch: cycle to the next official UN language

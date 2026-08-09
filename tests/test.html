@@ -201,6 +201,13 @@
     e.undo();
     assertEqual(e.atoms.join(','), '5');
   });
+  test('setCursor 定位并钳制光标', () => {
+    const e = new Editor();
+    e.insertDigit('2'); e.insertAtom('+'); e.insertDigit('3');   // atoms: 2,+,3  cursor=3
+    e.setCursor(1); assertEqual(e.cursor, 1);
+    e.setCursor(99); assertEqual(e.cursor, 3);                   // 钳制到末尾
+    e.setCursor(-5); assertEqual(e.cursor, 0);                    // 钳制到开头
+  });
 
   test('addHistory 最新在前', () => {
     const s = new Store(memStorage());
