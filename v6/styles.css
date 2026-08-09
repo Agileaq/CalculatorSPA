@@ -43,7 +43,14 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 .key.shift { color: var(--yellow); font-weight: 700; }
 .key.danger { color: var(--red); }
 .key.active { outline: 2px solid var(--yellow); outline-offset: -2px; }
-.key[data-id="left"], .key[data-id="right"], .key[data-id="redo"], .key[data-id="undo"] { color: var(--blue); }
+.key[data-id="left"], .key[data-id="right"], .key[data-id="redo"], .key[data-id="undo"],
+.key[data-id="mathUp"], .key[data-id="mathDown"] { color: var(--blue); }
+/* 历史按钮：用图标替换 ↺ 字形 */
+.key[data-id="history"] {
+  color: transparent;
+  background: var(--panel) url('icons/history.png') center / 28px 28px no-repeat;
+}
+.key[data-id="history"]:active { background-color: #333; }
 
 #history-panel { position: absolute; inset: 0; background: rgba(0,0,0,.96); z-index: 10;
   display: flex; flex-direction: column; }
