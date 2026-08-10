@@ -36,8 +36,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 /* 每个 <li> 统一顶分隔符：历史条目之间、历史与当前输入之间一致 */
 #tape-list li { padding: 6px 16px; cursor: pointer; border-top: 1px solid #1a1a1a; }
 #tape-list li:active { background: #141416; }
-#tape-list .h-expr { font-size: 18px; text-align: left; word-break: break-all; color: var(--text); }
-#tape-list .h-res  { font-size: 18px; text-align: right; color: var(--text); }
+#tape-list .h-expr { font-size: 18px; text-align: left; word-break: break-all; color: var(--text);
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+#tape-list .h-res  { font-size: 18px; text-align: right; color: var(--text);
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 #tape-list .h-res.error { color: var(--red); }
 /* 当前输入（磁带末项，未完成条目）：同磁带条目样式，带闪烁光标，min-height 防塌缩 */
 .h-current { min-height: 44px; }
