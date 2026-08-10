@@ -92,7 +92,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: Task 1 的 `.h-current` 结构
-- Produces: `.h-current`(同磁带条目样式 + 光标占位 + `min-height:44px`)、每个 `<li>` 统一 `border-top`、`.h-current .h-res.error{color:var(--red)}`、`#calc.tape-expanded #tape-list .h-current{display:none}`
+- Produces: `.h-current`(同磁带条目样式 + 光标占位 + `min-height:44px`)、每个 `<li>` 统一 `border-top`、`#tape-list .h-res.error{color:var(--red)}`、`#calc.tape-expanded #tape-list .h-current{display:none}`
 
 - [ ] **Step 1: 替换磁带条目样式 + 删 `#inputbar`/`#expr`/`#result` 区块**
 
