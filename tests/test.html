@@ -514,6 +514,9 @@
 
   // ---- AC 两段式判据(输入是否为空)----
   // 不测 app.js 的 dispatch(依赖 DOM),只测判据语义:editor.atoms.length>0 → 非空。
+  // 注:以下 3 例为 editor.atoms.length 语义守护,不覆盖本次重构的 DOM 行为
+  //    (renderCurrentInput / setResultLine / pointer 委托);那部分需在浏览器跑
+  //    runAll(120 例)做回归 —— 本文件无法运行浏览器套件,故留作人工验证项。
   test('AC 判据:空 editor 视为输入已空', () => {
     const e = new Editor();
     assertEqual(e.atoms.length, 0);   // 即 AC 第二段(resetToNormal)的触发条件

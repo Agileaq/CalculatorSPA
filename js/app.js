@@ -113,7 +113,7 @@ function openAction(li, item) {
   const mk = (txt, fn) => { const b = document.createElement('button'); b.type = 'button';
     b.textContent = txt; b.addEventListener('click', (e) => { e.stopPropagation(); fn(); }); return b; };
   row.append(
-    mk('Insert', () => { editor.insertAtoms(item.atoms); state.resetRecall(); closeAction(); render(); }),
+    mk('Insert', () => { editor.insertAtoms(item.atoms); state.resetRecall(); closeAction(); render(); scrollTapeToBottom(); }),
     mk('Copy', () => { copyText(item.display); closeAction(); }),
     mk('Retry', () => { retryEntry(item); }),
   );
@@ -376,10 +376,10 @@ document.querySelector('#keypad').addEventListener('click', (e) => {
   if (btn) dispatch(btn.dataset.id);
 });
 // Magnifier loupe: while dragging on touch/pen, float a magnified horizontal
-// window directly above #expr, centered on the cursor (not the finger) so the
-// magnified cursor overlays the real one. Shows only the chars around the
-// cursor (≤3 each side) on a single line — no vertical context. Mouse drags are
-// precise enough to skip it.
+// window directly above the current input line (.h-current .h-expr), centered
+// on the cursor (not the finger) so the magnified cursor overlays the real
+// one. Shows only the chars around the cursor (≤3 each side) on a single line
+// — no vertical context. Mouse drags are precise enough to skip it.
 const magEl = document.createElement('div');
 magEl.id = 'magnifier';
 magEl.hidden = true;
@@ -401,10 +401,11 @@ function displayString() {
   if (k === atoms.length) curIdx = s.length;            // cursor at end
   return { s, curIdx };
 }
-// Loupe above #expr, magnified cursor overlaying the real one. A fixed 9ch-wide
-// viewport over one line of the whole expression, translated so the cursor sits
-// centered; at the ends the translate is clamped so the cursor rides the near
-// border and the far side's half-char peeks at the opposite border (symmetric).
+// Loupe above the current input line (.h-current .h-expr), magnified cursor
+// overlaying the real one. A fixed 9ch-wide viewport over one line of the whole
+// expression, translated so the cursor sits centered; at the ends the
+// translate is clamped so the cursor rides the near border and the far side's
+// half-char peeks at the opposite border (symmetric).
 function showMagnifier() {
   const cur = exprEl().querySelector('.cursor');
   const rect = exprEl().getBoundingClientRect();
@@ -443,14 +444,14 @@ function showMagnifier() {
   left = Math.max(0, Math.min(left, vw - w));
   magEl.style.left = left + 'px';
   const h = magEl.offsetHeight;                              // content 38px + 2×2px border
-  let top = rect.top - h - 4;                                 // sit fully above #expr with a 4px gap
+  let top = rect.top - h - 4;                                 // sit fully above the input line with a 4px gap
   if (top < 2) top = rect.bottom + 4;                         // no room above → drop below the expr
   magEl.style.top = top + 'px';
 }
 function hideMagnifier() { magEl.hidden = true; }
 // Touch expression to move cursor: press-and-hold, drag to position, release
 // (iOS-native long-press cursor drag). Cursor follows the finger live; pointer
-// is captured so the drag survives moving outside #expr without dropping.
+// is captured so the drag survives moving outside the input line without dropping.
 function nearestBoundary(x, y) {
   const toks = exprEl().querySelectorAll(':scope > .tok');
   if (!toks.length) return null;                      // empty expr: nothing to do
@@ -528,7 +529,7 @@ async function pasteAtCursor() {
     if (ch === '-') editor.insertAtom('-');
     else editor.insertDigit(ch);                          // 复用数字合并/小数点逻辑
   }
-  state.resetRecall(); render();
+  state.resetRecall(); render(); scrollTapeToBottom();
 }
 function maybeDoubleTap(e) {
   // 用 harness 提供的时间戳；e.timeStamp 单调，避免 Date.now()

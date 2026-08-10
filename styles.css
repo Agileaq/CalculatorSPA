@@ -111,12 +111,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
   font-size: 18px; padding: 16px 0; cursor: pointer; }
 .math-item:active { background: #333; }
 
-/* Magnifier loupe (touch-drag cursor assist). Sits directly above #expr, the
-   magnified cursor overlaying the real one. A fixed 9ch-wide viewport over one
-   line of the whole expression; JS translates the line so the cursor is centered,
-   clamping at the ends so the cursor rides the near border and the far side's
-   half-char peeks at the opposite border (symmetric at both ends). 1.2× zoom
-   (font 38px vs #expr's 32px); ch-based width tracks the font, no hand-picked px. */
+/* Magnifier loupe (touch-drag cursor assist). Sits directly above the current
+   input line (.h-current .h-expr), the magnified cursor overlaying the real
+   one. A fixed 9ch-wide viewport over one line of the whole expression; JS
+   translates the line so the cursor is centered, clamping at the ends so the
+   cursor rides the near border and the far side's half-char peeks at the
+   opposite border (symmetric at both ends). ~2.1× zoom (font 38px vs the input
+   line's 18px); ch-based width tracks the font, no hand-picked px. */
 #magnifier { position: fixed; left: 0; top: 0; width: 9ch;
   border-radius: 6px; overflow: hidden; pointer-events: none; z-index: 30;
   border: 2px solid rgba(255,255,255,.5); background: var(--bg);
