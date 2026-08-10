@@ -137,6 +137,7 @@ function retryEntry(item) {
 tapeList.addEventListener('click', (e) => {
   const li = e.target.closest('li');
   if (!li || li.classList.contains('tape-action')) return;
+  if (li.classList.contains('h-current')) return;   // 当前输入行:走光标拖拽,不弹 Action
   const item = entryByTs(li.dataset.ts);
   if (!item) return;
   if (openActionTs === String(item.ts)) { closeAction(); }
@@ -466,11 +467,7 @@ function nearestBoundary(x, y) {
   return best;
 }
 let dragging = false;
-// TODO Task 4: delegate on tapeList with proper .h-current containment check.
-// Task 3 bridge: exprEl is now a getter function (no addEventListener), so attach
-// to the persistent tapeList and guard with a containment check so taps OUTSIDE
-// .h-current .h-expr are ignored (otherwise history-row taps would hijack the
-// cursor and suppress the click handler). Task 4 will rewrite this delegation.
+// 光标拖拽委托到 tapeList：只在 target 落在 .h-current .h-expr 时启动。
 tapeList.addEventListener('pointerdown', (e) => {
   const host = exprEl();
   if (!host || !host.contains(e.target)) return;
@@ -500,7 +497,8 @@ const endDrag = (e) => {
   dragging = false;
   magOn = false;
   hideMagnifier();
-  try { exprEl().releasePointerCapture(e.pointerId); } catch (_) {}
+  const host = exprEl();
+  if (host) { try { host.releasePointerCapture(e.pointerId); } catch (_) {} }
 };
 // double-touch 粘贴：两次 pointerup 间隔≤300ms 且位置相近 → 读剪贴板插到光标处。
 // 光标已由本次 pointerdown 的 nearestBoundary 定位，故直接在当前光标插入。
@@ -524,7 +522,12 @@ function maybeDoubleTap(e) {
   if (now - lastTapT < 300 && near) { lastTapT = 0; pasteAtCursor(); return; }
   lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY;
 }
-tapeList.addEventListener('pointerup', (e) => { endDrag(e); maybeDoubleTap(e); });
+tapeList.addEventListener('pointerup', (e) => {
+  endDrag(e);
+  const host = exprEl();
+  if (!host || !host.contains(e.target)) return;
+  maybeDoubleTap(e);
+});
 tapeList.addEventListener('pointercancel', endDrag);
 
 // overscroll 手势：顶端到顶再上拉→(先懒加载，再)展开；底端到底再下拉→复位干净态。
