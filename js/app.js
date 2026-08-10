@@ -302,10 +302,24 @@ function doSto() {
 }
 
 // Handles only "insert into editor" actions; caller calls render().
+// 空输入时这些二元运算符前面必须数字（+ − × ÷ ^ nCr nPr）。有 Ans 则自动补 Ans 续算。
+const PRECEDENCE_OPS = new Set(['+', '-', '*', '/', '^', 'nCr', 'nPr']);
+const hasAns = () => state.ans !== 0 || store.history.length > 0;
+
 function execAction(action) {
   switch (action.kind) {
     case 'digit': editor.insertDigit(action.payload); break;
-    case 'atom': editor.insertAtom(action.payload); break;
+    case 'atom': {
+      const p = action.payload;
+      // 空输入时按二元运算符 (+ − × ÷ ^ nCr nPr)：前面必须数字。
+      // 有 Ans 时自动补 Ans 作为左操作数（续算），否则提示无法使用。
+      if (editor.atoms.length === 0 && PRECEDENCE_OPS.has(p)) {
+        if (hasAns()) editor.insertAtom('Ans');
+        else { showToast(t('noAns')); break; }
+      }
+      editor.insertAtom(p);
+      break;
+    }
     case 'func':
       if (action.payload === 'square') { editor.insertAtom('^'); editor.insertAtom('2'); }
       else if (action.payload === 'cube') { editor.insertAtom('^'); editor.insertAtom('3'); }

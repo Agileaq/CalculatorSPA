@@ -463,8 +463,8 @@
   test('i18n t() 未知 key 回退到 key 本身', () => {
     assertEqual(t('no.such.key'), 'no.such.key');
   });
-  test('i18n copied / pasteFail 六语言齐全', () => {
-    for (const key of ['copied', 'pasteFail']) {
+  test('i18n copied / pasteFail / noAns 六语言齐全', () => {
+    for (const key of ['copied', 'pasteFail', 'noAns']) {
       for (const code of ['en','zh','fr','es','ru','ar']) {
         setLocale(code);
         const s = t(key);
@@ -531,6 +531,22 @@
     e.insertDigit('5'); e.insertAtom('+'); e.insertDigit('3');
     e.clear();
     assertEqual(e.atoms.length, 0);   // 清空后第二段触发条件成立
+  });
+
+  // ---- 运算符前置 Ans（空输入按二元运算符）判据 ----
+  // 不测 app.js 的 execAction（依赖 DOM/全局），只测判据语义：
+  // 空 editor 按二元运算符(+ − × ÷ ^ nCr nPr) 时需要左操作数。
+  test('空输入按运算符:需左操作数 (空 editor 判据)', () => {
+    const e = new Editor();
+    assertEqual(e.atoms.length, 0);   // 空输入：触发"前置 Ans"判据
+    e.insertAtom('+');                // 没有 Ans 补位时直接插入 → 形成孤立 +
+    assertEqual(e.atoms.join(','), '+'); // 后续 lex/parse 会报 Syntax Error(由引擎把关)
+  });
+  test('有内容时按运算符:正常插入(无需补 Ans)', () => {
+    const e = new Editor();
+    e.insertDigit('2');               // 非空 → 不触发前置判据
+    e.insertAtom('+'); e.insertDigit('3');
+    assertEqual(e.atoms.join(','), '2,+,3');
   });
 
   runAll();
