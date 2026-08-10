@@ -469,7 +469,29 @@ const endDrag = (e) => {
   hideMagnifier();
   try { exprEl.releasePointerCapture(e.pointerId); } catch (_) {}
 };
-exprEl.addEventListener('pointerup', endDrag);
+// double-touch 粘贴：两次 pointerup 间隔≤300ms 且位置相近 → 读剪贴板插到光标处。
+// 光标已由本次 pointerdown 的 nearestBoundary 定位，故直接在当前光标插入。
+let lastTapT = 0, lastTapX = 0, lastTapY = 0;
+async function pasteAtCursor() {
+  let text = '';
+  try { text = await navigator.clipboard.readText(); }
+  catch { showToast(t('pasteFail')); return; }
+  const m = (text || '').trim().match(/^-?\d*\.?\d+/);   // 仅取普通十进制数字串
+  if (!m) { showToast(t('pasteFail')); return; }
+  for (const ch of m[0]) {
+    if (ch === '-') editor.insertAtom('-');
+    else editor.insertDigit(ch);                          // 复用数字合并/小数点逻辑
+  }
+  state.resetRecall(); render();
+}
+function maybeDoubleTap(e) {
+  // 用 harness 提供的时间戳；e.timeStamp 单调，避免 Date.now()
+  const now = e.timeStamp;
+  const near = Math.abs(e.clientX - lastTapX) < 24 && Math.abs(e.clientY - lastTapY) < 24;
+  if (now - lastTapT < 300 && near) { lastTapT = 0; pasteAtCursor(); return; }
+  lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY;
+}
+exprEl.addEventListener('pointerup', (e) => { endDrag(e); maybeDoubleTap(e); });
 exprEl.addEventListener('pointercancel', endDrag);
 
 // overscroll 手势：顶端到顶再上拉→(先懒加载，再)展开；底端到底再下拉→复位干净态。
