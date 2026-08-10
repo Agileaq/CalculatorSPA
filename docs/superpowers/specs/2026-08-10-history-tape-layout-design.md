@@ -103,8 +103,8 @@
 
 ### 6.4 ↺ 展开/收起（盖住键盘）
 - ↺ 按钮随时切换展开态（与顶端 overscroll 展开等价，互为入口）。
-- 展开：给 `#calc` 加 `.tape-expanded`；`#tape-scroll` 变为绝对定位覆盖层，**顶到状态栏下、底到 ↺ 按钮那一行的下沿**。底沿由 JS 测量：`bottom = innerHeight - historyBtn.getBoundingClientRect().bottom`（与放大镜同样的 rect 测量手法，稳健、不硬编码行高）。功能行 1（Shift/↷/∧/↶/⌫）与功能行 2（AC/‹/MATH/›/↺）保持可见可点；磁带覆盖其下所有键行。
-- 收起：再点 ↺，或底端 overscroll 复位（§6.3）去掉 `.tape-expanded`。
+- 展开：给 `#calc` 加 `.tape-expanded`；`#tape-scroll` 变为绝对定位覆盖层，**顶到状态栏下、底到 ↺ 按钮那一行的上沿**。底沿由 JS 测量：`bottom = innerHeight - historyBtn.getBoundingClientRect().top`（与放大镜同样的 rect 测量手法，稳健、不硬编码行高）。**关键：用 ↺ 的 `top`（不是 `bottom`），使 ↺ 所在功能行（AC/‹/MATH/›/↺）整行保持在覆盖层下沿之外、可见可点** —— 这样"再点 ↺ 收起"才成立（用户原话：停在历史按钮那里，再点一下还原）。磁带覆盖该行以上的所有行（含功能行 1 Shift/↷/∧/↶/⌫）。
+- 收起：再点 ↺（该行未被盖，可点），或底端 overscroll 复位（§6.3）去掉 `.tape-expanded`。
 
 ### 6.5 overscroll 判定实现
 - 触摸：在 `#tape-scroll` 上跟踪 `touchstart` 的起点 Y 与 `touchmove` 的 `deltaY`；当当前已在顶端/底端且 `deltaY` 继续朝越界方向累计超过一个小阈值（如 40px）→ 触发对应手势，并对该手势做去抖（一次拉只触发一次）。

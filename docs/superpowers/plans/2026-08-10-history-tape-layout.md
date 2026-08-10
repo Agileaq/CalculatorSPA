@@ -266,10 +266,11 @@ git commit -m "feat: add Editor.insertAtoms for batch insert"
 
 ```css
 #display { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-/* 磁带：可滚动历史区，内容靠底对齐，少量条目贴着输入行向上堆 */
-#tape-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
-  display: flex; flex-direction: column; justify-content: flex-end; }
-#tape-list { list-style: none; width: 100%; }
+/* 磁带：可滚动历史区。用 #tape-list 的 margin-top:auto 把少量条目推到底，
+   而不是 #tape-scroll 的 justify-content:flex-end —— 后者在 Chromium 下会让
+   溢出内容的顶部不可达(scrollTop 卡 0)，磁带滚不动。min-height:0 允许收缩滚动。 */
+#tape-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+#tape-list { list-style: none; width: 100%; margin-top: auto; }
 #tape-list li { padding: 6px 16px; cursor: pointer; }
 #tape-list li:active { background: #141416; }
 #tape-list .h-expr { font-size: 18px; text-align: right; word-break: break-all; color: var(--muted); }
@@ -452,13 +453,13 @@ git commit -m "feat: render history tape; = commits and clears input; drop full-
 在 `styles.css` 磁带样式区（`#tape-list` 规则附近）新增：
 
 ```css
-/* 展开态：磁带变绝对定位覆盖层，盖住其下键行；bottom 由 JS 按 ↺ 行下沿设置 */
+/* 展开态：磁带变绝对定位覆盖层，盖住其下键行；bottom 由 JS 按 ↺ 行【上沿】设置 */
 #calc.tape-expanded #tape-scroll { position: absolute; left: 0; right: 0;
   top: 0; z-index: 12; background: rgba(0,0,0,.96); }
 #calc.tape-expanded #inputbar { display: none; }
 ```
 
-> `top:0` 让覆盖层从状态栏顶起（状态栏在 `#calc` 内、非 fixed，故覆盖层压在其上无妨，视觉上磁带占满上部）；`bottom` 由 JS 设为 ↺ 行下沿。展开时隐藏输入行，让磁带最大化。
+> `top:0` 让覆盖层从状态栏顶起（状态栏在 `#calc` 内、非 fixed，故覆盖层压在其上无妨，视觉上磁带占满上部）；`bottom` 由 JS 设为 ↺ 行【上沿】（见 Step 2），使 ↺ 所在整行留在覆盖层之外、可点。展开时隐藏输入行，让磁带最大化。
 
 - [ ] **Step 2: 替换 `toggleTapeExpand` 占位并新增展开/复位/懒加载**
 
@@ -472,8 +473,9 @@ function setExpanded(on) {
   expanded = on;
   calcEl.classList.toggle('tape-expanded', on);
   if (on) {
-    // 覆盖层底沿 = ↺ 按钮那一行的下沿（rect 测量，不硬编码行高）
-    const b = historyBtn.getBoundingClientRect().bottom;
+    // 覆盖层底沿 = ↺ 按钮那一行的【上沿】（rect 测量，不硬编码行高）。
+    // 用 top 而非 bottom：让 ↺ 所在整行留在覆盖层之外、可见可点，"再点 ↺ 收起"才成立。
+    const b = historyBtn.getBoundingClientRect().top;
     tapeScroll.style.bottom = (window.innerHeight - b) + 'px';
     renderTape(); scrollTapeToBottom();
   } else {
