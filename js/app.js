@@ -339,11 +339,12 @@ function dispatch(id) {
     state.clearShift(); updateShift();
     state.resetRecall(); // any insert exits recall; next ∧ starts fresh from newest
     render();
+    scrollTapeToBottom();   // Model A: 插入后把末项(.h-current)滚回视野
     return;
   }
 
   switch (action.kind) {
-    case 'backspace': editor.backspace(); state.resetRecall(); break;
+    case 'backspace': editor.backspace(); state.resetRecall(); render(); scrollTapeToBottom(); break;
     case 'clear':
       if (editor.atoms.length > 0) {        // 输入非空 → 清空输入
         editor.clear(); setResultLine('', false); state.resetRecall();
@@ -353,8 +354,8 @@ function dispatch(id) {
       break;
     case 'left': editor.moveLeft(); break;
     case 'right': editor.moveRight(); break;
-    case 'undo': editor.undo(); state.resetRecall(); break;
-    case 'redo': editor.redo(); state.resetRecall(); break;
+    case 'undo': editor.undo(); state.resetRecall(); render(); scrollTapeToBottom(); break;
+    case 'redo': editor.redo(); state.resetRecall(); render(); scrollTapeToBottom(); break;
     case 'equals': doEquals(); state.resetRecall(); break;
     case 'toggleAngle': state.toggleAngleMode(); updateBadge(); return;
     case 'toggleShift': state.toggleShift(); updateShift(); return;

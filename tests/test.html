@@ -512,6 +512,24 @@
     assertEqual(buildTape([], 0, true).length, 0);
   });
 
+  // ---- AC 两段式判据(输入是否为空)----
+  // 不测 app.js 的 dispatch(依赖 DOM),只测判据语义:editor.atoms.length>0 → 非空。
+  test('AC 判据:空 editor 视为输入已空', () => {
+    const e = new Editor();
+    assertEqual(e.atoms.length, 0);   // 即 AC 第二段(resetToNormal)的触发条件
+  });
+  test('AC 判据:有原子视为输入非空', () => {
+    const e = new Editor();
+    e.insertDigit('5'); e.insertAtom('+'); e.insertDigit('3');
+    assertEqual(e.atoms.length, 3);   // 即 AC 第一段(清空)的触发条件
+  });
+  test('AC 清空后回到空(editor.clear 语义)', () => {
+    const e = new Editor();
+    e.insertDigit('5'); e.insertAtom('+'); e.insertDigit('3');
+    e.clear();
+    assertEqual(e.atoms.length, 0);   // 清空后第二段触发条件成立
+  });
+
   runAll();
 </script>
 </body></html>
