@@ -87,8 +87,8 @@ function setExpanded(on) {
   expanded = on;
   calcEl.classList.toggle('tape-expanded', on);
   if (on) {
-    // 覆盖层底沿 = ↺ 按钮那一行的下沿（rect 测量，不硬编码行高）
-    const b = historyBtn.getBoundingClientRect().bottom;
+    // 覆盖层底沿 = ↺ 按钮那一行的上沿（rect 测量，不硬编码行高），使 ↺ 行整行露出可点
+    const b = historyBtn.getBoundingClientRect().top;
     tapeScroll.style.bottom = (window.innerHeight - b) + 'px';
     renderTape(); scrollTapeToBottom();
   } else {

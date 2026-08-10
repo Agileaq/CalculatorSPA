@@ -25,14 +25,14 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 
 #display { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 /* 磁带：可滚动历史区，内容靠底对齐，少量条目贴着输入行向上堆 */
-#tape-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
-  display: flex; flex-direction: column; justify-content: flex-end; }
-#tape-list { list-style: none; width: 100%; }
+#tape-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; }
+#tape-list { list-style: none; width: 100%; margin-top: auto; }
 #tape-list li { padding: 6px 16px; cursor: pointer; }
 #tape-list li:active { background: #141416; }
 #tape-list .h-expr { font-size: 18px; text-align: right; word-break: break-all; color: var(--muted); }
 #tape-list .h-res  { font-size: 22px; text-align: right; color: var(--text); }
-/* 展开态：磁带变绝对定位覆盖层，盖住其下键行；bottom 由 JS 按 ↺ 行下沿设置 */
+/* 展开态：磁带变绝对定位覆盖层，盖住其上方键行；bottom 由 JS 按 ↺ 行上沿设置，露出 ↺ 整行 */
 #calc.tape-expanded #tape-scroll { position: absolute; left: 0; right: 0;
   top: 0; z-index: 12; background: rgba(0,0,0,.96); }
 #calc.tape-expanded #inputbar { display: none; }
