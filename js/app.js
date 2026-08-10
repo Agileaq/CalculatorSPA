@@ -158,8 +158,10 @@ function setExpanded(on) {
     tapeScroll.style.bottom = (window.innerHeight - b) + 'px';
     renderTape(); render(); scrollTapeToBottom();   // renderTape 重建 .h-current 后 render() 填光标
   } else {
+    // 收起：撤销展开几何 + 回到会话视图(只显会话条目,隐藏旧历史) + 重建磁带 + 滚底
+    showOlder = false;
     tapeScroll.style.bottom = '';
-    render();   // 收起后补一次光标(renderTape 未重跑，但确保 .h-current 有光标)
+    renderTape(); render(); scrollTapeToBottom();
   }
 }
 function toggleTapeExpand() { setExpanded(!expanded); }
