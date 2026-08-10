@@ -90,6 +90,24 @@ The repo is **not** served from the trunk. The root `index.html` is a *gate* tha
 5. Bump the `dev.html` version label (e.g. `v6 · dev` → `v7 · dev`).
 6. Commit and push — the Pages workflow deploys automatically. Verify the JS in `vN/` is byte-identical to the trunk (the trunk is the source of truth; the snapshot is a copy).
 
+### Patch releases (e.g. v6 → v6b, v7 → v7a) — DO NOT create a new snapshot dir
+
+A **full version** (v6 → v7) creates a new `vN/` directory and flips the root gate to it. A **patch release** (v6 → **v6b**, v7 → **v7a**) ships a small fix to the *current* version **without** a new directory:
+
+- **Root `index.html` gate stays at the current dir** — `url=v6/` and `location.replace('v6/')` are **unchanged**; do not flip to `v6b/`. The "current version" comment markers and `#version` badge text also stay `v6` (the *path* and *badge* reflect the dir; the letter only appears in the CACHE name).
+- **Patch the existing snapshot in place** — copy the trunk's changed files into `v6/` (e.g. `v6/styles.css`, `v6/sw.js`, `v6/js/*.js`, new `v6/icons/*`). `v6/index.html` keeps its `v6` version label; update it only if the DOM structure changed (new buttons, removed `data-placeholder`, etc.), keeping the SW-registration `<script>` (it registers `sw.js`).
+- **Bump only the CACHE name** — `calc-v6` → `calc-v6b` (in **both** trunk `sw.js` and `v6/sw.js`). This is the only place the letter appears; it forces installed clients to drop the old cache and refetch, which is the whole point of the patch.
+- **`dev.html` label** bumps to the patch letter (e.g. `v6 · dev` → `v6b · dev`) so the trunk preview shows the patch level.
+- Rule of thumb: **the letter is a cache-version tag, not a directory.** Only a digit bump (v7 → v8) makes a new directory and flips the gate.
+
+### `vN/index.html` vs `dev.html` — service worker registration
+
+Both share the keypad + `#display` DOM, but differ in one block at the bottom:
+- **`vN/index.html`** registers the service worker (production = cached): `<script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js')); }</script>`
+- **`dev.html`** deliberately does **not** register the SW (trunk preview = always-fresh): a comment replaces that block.
+
+When patching a snapshot's `index.html` from the trunk, **re-add the SW-registration script** (don't copy dev.html's no-SW comment verbatim). When cutting a new full snapshot, seed `vN/index.html` from the prior `vN/index.html` (which already has the SW block), not from `dev.html`.
+
 ## Tests
 
 `tests/test.html` is a single module script that imports every engine module plus `assert.js` and registers ~70 cases covering formatter, lexer (incl. implicit multiply, nCr/nPr, new funcs), parser (precedence, right-assoc `^`, unary, nCr), evaluator (all funcs, angle modes, domain errors, nCr/nPr), engine facade, Editor merge/backspace/undo, Store ordering + persistence + 100-cap, AppState (incl. `recall`), keymap kinds + keyboard mapping + shift labels, and MATH_CATALOG shape. When you add an atom/kind/func, add a case here and keep it green before releasing.

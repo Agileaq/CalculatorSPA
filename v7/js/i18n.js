@@ -66,6 +66,10 @@ const STRINGS = {
     en: 'Paste failed', zh: '粘贴失败', fr: 'Échec du collage', es: 'Error al pegar',
     ru: 'Не удалось вставить', ar: 'فشل اللصق',
   },
+  noAns: {
+    en: 'No Ans to continue', zh: '无 Ans 可续算', fr: 'Pas d’Ans pour continuer', es: 'Sin Ans para continuar',
+    ru: 'Нет Ans для продолжения', ar: 'لا يوجد Ans للمتابعة',
+  },
 
   // MATH panel group titles (stable keys; text changes with language)
   'math.trig': {

@@ -18,7 +18,10 @@ let showOlder = false;
 let openActionTs = null;   // 当前展开 Action 行的条目 ts（null=无展开）
 
 const $ = (s) => document.querySelector(s);
-const exprEl = $('#expr'), resultEl = $('#result'), badgeEl = $('#badge');
+const badgeEl = $('#badge');
+// 当前输入行是磁带末项 <li class="h-current">；列表重建后元素更替，故用 getter 动态取。
+// exprEl() 返回 .h-current 内的 .h-expr（光标/拖拽/放大镜的目标）。
+const exprEl = () => tapeList.querySelector('.h-current .h-expr');
 const toastEl = $('#toast');
 const mathPanel = $('#math-panel'), mathBody = $('#math-body');
 const langEl = $('#lang'), historyTitleEl = $('#history-title'), mathTitleEl = $('#math-title');
@@ -30,14 +33,17 @@ const DISPLAY = {
 };
 const showAtom = (a) => DISPLAY[a] ?? a;
 
-function render() {
-  exprEl.innerHTML = '';
+// 渲染磁带末项（当前输入）的 .h-expr：光标 + .tok/.ch spans。目标 = .h-current .h-expr。
+function renderCurrentInput() {
+  const host = tapeList.querySelector('.h-current .h-expr');
+  if (!host) return;                          // 列表未建好(初始化前/重建瞬间)
+  host.innerHTML = '';
   const atoms = editor.atoms;
   const cur = editor.cursor, off = editor.offset;
   for (let i = 0; i <= atoms.length; i++) {
     // Cursor at an atom boundary (offset 0): before atoms[i] (or at end if i===len).
     if (i === cur && off === 0) {
-      const c = document.createElement('span'); c.className = 'cursor'; exprEl.appendChild(c);
+      const c = document.createElement('span'); c.className = 'cursor'; host.appendChild(c);
     }
     if (i < atoms.length) {
       const a = atoms[i];
@@ -58,10 +64,12 @@ function render() {
       } else {
         t.textContent = showAtom(a);
       }
-      exprEl.appendChild(t);
+      host.appendChild(t);
     }
   }
 }
+// 薄壳：保留 render() 名，避免改 40+ 调用点。等价于 renderCurrentInput()。
+function render() { renderCurrentInput(); }
 // A number atom renders char-by-char for hit-testing. DISPLAY-translated atoms like
 // 'sin(' are still single spans (no char-level cursor inside them). Only digit/. atoms.
 const isNumDisplay = (a) => /^\d*\.?\d*$/.test(a) && a !== '';
@@ -79,6 +87,13 @@ function renderTape() {
     li.append(e, r);
     tapeList.appendChild(li);
   }
+  // 末项：当前输入占位（.h-expr 由 renderCurrentInput 填充，.h-res 由回放/错误路径填）
+  const cur = document.createElement('li');
+  cur.className = 'h-current';
+  const e = document.createElement('div'); e.className = 'h-expr';
+  const r = document.createElement('div'); r.className = 'h-res'; r.hidden = true;
+  cur.append(e, r);
+  tapeList.appendChild(cur);
 }
 function scrollTapeToBottom() { tapeScroll.scrollTop = tapeScroll.scrollHeight; }
 
@@ -98,7 +113,7 @@ function openAction(li, item) {
   const mk = (txt, fn) => { const b = document.createElement('button'); b.type = 'button';
     b.textContent = txt; b.addEventListener('click', (e) => { e.stopPropagation(); fn(); }); return b; };
   row.append(
-    mk('Insert', () => { editor.insertAtoms(item.atoms); state.resetRecall(); closeAction(); render(); }),
+    mk('Insert', () => { if (expanded) setExpanded(false); editor.insertAtoms(item.atoms); state.resetRecall(); closeAction(); render(); scrollTapeToBottom(); }),
     mk('Copy', () => { copyText(item.display); closeAction(); }),
     mk('Retry', () => { retryEntry(item); }),
   );
@@ -111,17 +126,19 @@ async function copyText(s) {
 }
 
 function retryEntry(item) {
+  if (expanded) setExpanded(false);   // 展开态下重算:先收起到会话视图,让新结果/输入可见
   const r = evaluate(item.atoms, { angleMode: state.angleMode, ans: state.ans, vars: store.vars });
   closeAction();
   if (r.ok) {
     state.ans = r.value; store.addHistory(item.atoms, r.display);
-    renderTape(); scrollTapeToBottom();
+    renderTape(); render(); scrollTapeToBottom();   // renderTape 重建 .h-current 后 render() 填光标
   } else { showToast(r.error); }         // Retry 出错：轻提示，不动输入行
 }
 
 tapeList.addEventListener('click', (e) => {
   const li = e.target.closest('li');
   if (!li || li.classList.contains('tape-action')) return;
+  if (li.classList.contains('h-current')) return;   // 当前输入行:走光标拖拽,不弹 Action
   const item = entryByTs(li.dataset.ts);
   if (!item) return;
   if (openActionTs === String(item.ts)) { closeAction(); }
@@ -135,12 +152,17 @@ function setExpanded(on) {
   expanded = on;
   calcEl.classList.toggle('tape-expanded', on);
   if (on) {
-    // 覆盖层底沿 = ↺ 按钮那一行的上沿（rect 测量，不硬编码行高），使 ↺ 行整行露出可点
+    // 展开 = 全量查看历史：接入旧历史(showOlder=true)，覆盖层底沿 = ↺ 行上沿，露出 ↺ 整行可点
+    showOlder = true;
+    // 覆盖层底沿 = ↺ 按钮那一行的上沿（rect 测量，不硬编码行高）
     const b = historyBtn.getBoundingClientRect().top;
     tapeScroll.style.bottom = (window.innerHeight - b) + 'px';
-    renderTape(); scrollTapeToBottom();
+    renderTape(); render(); scrollTapeToBottom();   // renderTape 重建 .h-current 后 render() 填光标
   } else {
+    // 收起：撤销展开几何 + 回到会话视图(只显会话条目,隐藏旧历史) + 重建磁带 + 滚底
+    showOlder = false;
     tapeScroll.style.bottom = '';
+    renderTape(); render(); scrollTapeToBottom();
   }
 }
 function toggleTapeExpand() { setExpanded(!expanded); }
@@ -151,16 +173,20 @@ function loadOlder() {
   const older = store.history.filter((h) => h.ts <= baselineTs);
   if (!older.length) return false;
   const oldH = tapeScroll.scrollHeight;
-  showOlder = true; renderTape();
+  showOlder = true; renderTape(); render();   // renderTape 重建 .h-current 后 render() 填光标
   tapeScroll.scrollTop += tapeScroll.scrollHeight - oldH;  // 锚定
   return true;
 }
 
-// 复位到干净态：隐藏旧历史 + 收起展开 + 露输入行
-function resetTapeClean() {
+// 唯一复位出口：收叠历史(showOlder=false) + 关展开(磁带回原位、显输入行) + 收 Action + 清回放 + 滚底。
+function resetToNormal() {
   showOlder = false;
+  baselineTs = store.history[0]?.ts ?? 0;   // 移基线到最新 → 现有历史全部归为 older，会话清空 → 只剩 .h-current
   if (expanded) setExpanded(false);
-  renderTape(); scrollTapeToBottom();
+  closeAction();
+  state.resetRecall();
+  setResultLine('', false);
+  renderTape(); renderCurrentInput(); scrollTapeToBottom();
 }
 
 let toastTimer = null;
@@ -197,18 +223,29 @@ function recallUp() {
   if (next >= hist.length) { showToast(t('noMoreHistory')); return; }
   state.recall = next;
   editor.setAtoms(hist[next].atoms);
-  resultEl.textContent = '= ' + hist[next].display;
-  resultEl.classList.remove('error');
+  setResultLine('= ' + hist[next].display, false);
 }
 function recallDown() {
-  if (state.recall === null) return; // not replaying: ∨ is a safe no-op
+  if (state.recall === null) {              // 非 replay:∨ = snap 回底(看输入)
+    if (tapeScroll.scrollTop + tapeScroll.clientHeight < tapeScroll.scrollHeight - 1) {
+      scrollTapeToBottom();
+    }
+    return;
+  }
   const hist = store.history;
   const next = state.recall - 1;
-  if (next < 0) { state.resetRecall(); editor.clear(); resultEl.textContent = ''; return; }
+  if (next < 0) { state.resetRecall(); editor.clear(); setResultLine('', true); return; }
   state.recall = next;
   editor.setAtoms(hist[next].atoms);
-  resultEl.textContent = '= ' + hist[next].display;
-  resultEl.classList.remove('error');
+  setResultLine('= ' + hist[next].display, false);
+}
+// 结果线(回放值/错误)并入磁带末项 .h-current .h-res；正常打字时隐藏。
+function setResultLine(text, isError) {
+  const r = tapeList.querySelector('.h-current .h-res');
+  if (!r) return;
+  if (text === '') { r.hidden = true; r.textContent = ''; r.classList.remove('error'); return; }
+  r.hidden = false; r.textContent = text;
+  r.classList.toggle('error', !!isError);
 }
 
 function injectShiftLabels() {
@@ -251,10 +288,10 @@ function doEquals() {
   if (r.ok) {
     state.ans = r.value; store.addHistory(editor.atoms, r.display);
     editor.clear();                       // 提交后清空输入行
-    resultEl.textContent = ''; resultEl.classList.remove('error');
-    renderTape(); scrollTapeToBottom();   // 新条目落到磁带底部
+    setResultLine('', false);             // 提交成功:清结果线(新结果作为历史条目落在 .h-current 正上方)
+    renderTape(); renderCurrentInput(); scrollTapeToBottom();
   } else {
-    resultEl.textContent = r.error; resultEl.classList.add('error');  // 失败：保留算式，不入库
+    setResultLine(r.error, true);          // 失败:错误红,保留算式,不入库
   }
 }
 
@@ -268,10 +305,24 @@ function doSto() {
 }
 
 // Handles only "insert into editor" actions; caller calls render().
+// 空输入时这些二元运算符前面必须数字（+ − × ÷ ^ nCr nPr）。有 Ans 则自动补 Ans 续算。
+const PRECEDENCE_OPS = new Set(['+', '-', '*', '/', '^', 'nCr', 'nPr']);
+const hasAns = () => state.ans !== 0 || store.history.length > 0;
+
 function execAction(action) {
   switch (action.kind) {
     case 'digit': editor.insertDigit(action.payload); break;
-    case 'atom': editor.insertAtom(action.payload); break;
+    case 'atom': {
+      const p = action.payload;
+      // 空输入时按二元运算符 (+ − × ÷ ^ nCr nPr)：前面必须数字。
+      // 有 Ans 时自动补 Ans 作为左操作数（续算），否则提示无法使用。
+      if (editor.atoms.length === 0 && PRECEDENCE_OPS.has(p)) {
+        if (hasAns()) editor.insertAtom('Ans');
+        else { showToast(t('noAns')); break; }
+      }
+      editor.insertAtom(p);
+      break;
+    }
     case 'func':
       if (action.payload === 'square') { editor.insertAtom('^'); editor.insertAtom('2'); }
       else if (action.payload === 'cube') { editor.insertAtom('^'); editor.insertAtom('3'); }
@@ -306,16 +357,23 @@ function dispatch(id) {
     state.clearShift(); updateShift();
     state.resetRecall(); // any insert exits recall; next ∧ starts fresh from newest
     render();
+    scrollTapeToBottom();   // Model A: 插入后把末项(.h-current)滚回视野
     return;
   }
 
   switch (action.kind) {
-    case 'backspace': editor.backspace(); state.resetRecall(); break;
-    case 'clear': editor.clear(); resultEl.textContent = ''; resultEl.classList.remove('error'); state.resetRecall(); break;
+    case 'backspace': editor.backspace(); state.resetRecall(); render(); scrollTapeToBottom(); break;
+    case 'clear':
+      if (editor.atoms.length > 0) {        // 输入非空 → 清空输入
+        editor.clear(); setResultLine('', false); state.resetRecall();
+      } else {                               // 输入已空 → 统一回正常态
+        resetToNormal();
+      }
+      break;
     case 'left': editor.moveLeft(); break;
     case 'right': editor.moveRight(); break;
-    case 'undo': editor.undo(); state.resetRecall(); break;
-    case 'redo': editor.redo(); state.resetRecall(); break;
+    case 'undo': editor.undo(); state.resetRecall(); render(); scrollTapeToBottom(); break;
+    case 'redo': editor.redo(); state.resetRecall(); render(); scrollTapeToBottom(); break;
     case 'equals': doEquals(); state.resetRecall(); break;
     case 'toggleAngle': state.toggleAngleMode(); updateBadge(); return;
     case 'toggleShift': state.toggleShift(); updateShift(); return;
@@ -336,10 +394,10 @@ document.querySelector('#keypad').addEventListener('click', (e) => {
   if (btn) dispatch(btn.dataset.id);
 });
 // Magnifier loupe: while dragging on touch/pen, float a magnified horizontal
-// window directly above #expr, centered on the cursor (not the finger) so the
-// magnified cursor overlays the real one. Shows only the chars around the
-// cursor (≤3 each side) on a single line — no vertical context. Mouse drags are
-// precise enough to skip it.
+// window directly above the current input line (.h-current .h-expr), centered
+// on the cursor (not the finger) so the magnified cursor overlays the real
+// one. Shows only the chars around the cursor (≤3 each side) on a single line
+// — no vertical context. Mouse drags are precise enough to skip it.
 const magEl = document.createElement('div');
 magEl.id = 'magnifier';
 magEl.hidden = true;
@@ -361,13 +419,14 @@ function displayString() {
   if (k === atoms.length) curIdx = s.length;            // cursor at end
   return { s, curIdx };
 }
-// Loupe above #expr, magnified cursor overlaying the real one. A fixed 9ch-wide
-// viewport over one line of the whole expression, translated so the cursor sits
-// centered; at the ends the translate is clamped so the cursor rides the near
-// border and the far side's half-char peeks at the opposite border (symmetric).
+// Loupe above the current input line (.h-current .h-expr), magnified cursor
+// overlaying the real one. A fixed 9ch-wide viewport over one line of the whole
+// expression, translated so the cursor sits centered; at the ends the
+// translate is clamped so the cursor rides the near border and the far side's
+// half-char peeks at the opposite border (symmetric).
 function showMagnifier() {
-  const cur = exprEl.querySelector('.cursor');
-  const rect = exprEl.getBoundingClientRect();
+  const cur = exprEl().querySelector('.cursor');
+  const rect = exprEl().getBoundingClientRect();
   const realX = cur ? cur.getBoundingClientRect().left : rect.left + rect.width / 2;
   const vw = window.innerWidth;
   const { s, curIdx } = displayString();
@@ -403,16 +462,16 @@ function showMagnifier() {
   left = Math.max(0, Math.min(left, vw - w));
   magEl.style.left = left + 'px';
   const h = magEl.offsetHeight;                              // content 38px + 2×2px border
-  let top = rect.top - h - 4;                                 // sit fully above #expr with a 4px gap
+  let top = rect.top - h - 4;                                 // sit fully above the input line with a 4px gap
   if (top < 2) top = rect.bottom + 4;                         // no room above → drop below the expr
   magEl.style.top = top + 'px';
 }
 function hideMagnifier() { magEl.hidden = true; }
 // Touch expression to move cursor: press-and-hold, drag to position, release
 // (iOS-native long-press cursor drag). Cursor follows the finger live; pointer
-// is captured so the drag survives moving outside #expr without dropping.
+// is captured so the drag survives moving outside the input line without dropping.
 function nearestBoundary(x, y) {
-  const toks = exprEl.querySelectorAll('.tok');
+  const toks = exprEl().querySelectorAll(':scope > .tok');
   if (!toks.length) return null;                      // empty expr: nothing to do
   let best = null, bestLine = Infinity, bestDx = Infinity;
   // Collect candidate (x, {i,o}) pairs per token line fragment. For a number atom
@@ -442,19 +501,24 @@ function nearestBoundary(x, y) {
   return best;
 }
 let dragging = false;
-exprEl.addEventListener('pointerdown', (e) => {
+// 光标拖拽委托到 tapeList：只在 target 落在 .h-current .h-expr 时启动。
+tapeList.addEventListener('pointerdown', (e) => {
+  const host = exprEl();
+  if (!host || !host.contains(e.target)) return;
   // Only touch/pen/mouse primary press starts a drag (not e.g. right-click).
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   const pos = nearestBoundary(e.clientX, e.clientY);
   if (pos === null) return;
   e.preventDefault();                                 // suppress text-selection long-press
   dragging = true;
-  try { exprEl.setPointerCapture(e.pointerId); } catch (_) {}
+  try { host.setPointerCapture(e.pointerId); } catch (_) {}
   editor.setCursor(pos.i, pos.o);                       // pure cursor move (no recall reset, like ‹ › keys)
   render();
   if (e.pointerType !== 'mouse') { magOn = true; showMagnifier(); }
 });
-exprEl.addEventListener('pointermove', (e) => {
+tapeList.addEventListener('pointermove', (e) => {
+  const host = exprEl();
+  if (!host || !host.contains(e.target)) return;
   if (!dragging) return;
   const pos = nearestBoundary(e.clientX, e.clientY);
   if (pos === null) return;
@@ -467,7 +531,8 @@ const endDrag = (e) => {
   dragging = false;
   magOn = false;
   hideMagnifier();
-  try { exprEl.releasePointerCapture(e.pointerId); } catch (_) {}
+  const host = exprEl();
+  if (host) { try { host.releasePointerCapture(e.pointerId); } catch (_) {} }
 };
 // double-touch 粘贴：两次 pointerup 间隔≤300ms 且位置相近 → 读剪贴板插到光标处。
 // 光标已由本次 pointerdown 的 nearestBoundary 定位，故直接在当前光标插入。
@@ -482,7 +547,7 @@ async function pasteAtCursor() {
     if (ch === '-') editor.insertAtom('-');
     else editor.insertDigit(ch);                          // 复用数字合并/小数点逻辑
   }
-  state.resetRecall(); render();
+  state.resetRecall(); render(); scrollTapeToBottom();
 }
 function maybeDoubleTap(e) {
   // 用 harness 提供的时间戳；e.timeStamp 单调，避免 Date.now()
@@ -491,8 +556,13 @@ function maybeDoubleTap(e) {
   if (now - lastTapT < 300 && near) { lastTapT = 0; pasteAtCursor(); return; }
   lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY;
 }
-exprEl.addEventListener('pointerup', (e) => { endDrag(e); maybeDoubleTap(e); });
-exprEl.addEventListener('pointercancel', endDrag);
+tapeList.addEventListener('pointerup', (e) => {
+  endDrag(e);
+  const host = exprEl();
+  if (!host || !host.contains(e.target)) return;
+  maybeDoubleTap(e);
+});
+tapeList.addEventListener('pointercancel', endDrag);
 
 // overscroll 手势：顶端到顶再上拉→(先懒加载，再)展开；底端到底再下拉→复位干净态。
 const OVER = 48;                 // 触发阈值(px)
@@ -506,8 +576,8 @@ tapeScroll.addEventListener('touchmove', (e) => {
   if (atTop && dy > OVER) {                              // 顶端继续下拉(内容下移=看更早)
     fired = true;
     if (!loadOlder()) setExpanded(true);                // 先接旧历史；已无更多则展开
-  } else if (atBottom && dy < -OVER) {                  // 底端继续上拉
-    fired = true; resetTapeClean();
+  } else if (atBottom && dy < -OVER) {                  // 底端继续上拉 → 回正常态
+    fired = true; resetToNormal();
   }
 }, { passive: true });
 tapeScroll.addEventListener('touchend', () => { touchY = null; }, { passive: true });
@@ -517,7 +587,7 @@ tapeScroll.addEventListener('wheel', (e) => {
   const atTop = tapeScroll.scrollTop <= 0;
   const atBottom = tapeScroll.scrollTop + tapeScroll.clientHeight >= tapeScroll.scrollHeight - 1;
   if (atTop && e.deltaY < -OVER) { if (!loadOlder()) setExpanded(true); }
-  else if (atBottom && e.deltaY > OVER) { resetTapeClean(); }
+  else if (atBottom && e.deltaY > OVER) { resetToNormal(); }
 }, { passive: true });
 
 // Badge click toggles angle mode
@@ -532,7 +602,7 @@ window.addEventListener('keydown', (e) => {
   if (id) { e.preventDefault(); dispatch(id); }
 });
 
-// Init
+// Init：renderTape 先建 .h-current 占位，再 render()（→ renderCurrentInput）填光标。
 injectShiftLabels();
 applyLocale();
-updateBadge(); updateShift(); render(); renderTape(); scrollTapeToBottom();
+updateBadge(); updateShift(); renderTape(); render(); scrollTapeToBottom();
