@@ -126,6 +126,7 @@ async function copyText(s) {
 }
 
 function retryEntry(item) {
+  if (expanded) setExpanded(false);   // 展开态下重算:先收起到会话视图,让新结果/输入可见
   const r = evaluate(item.atoms, { angleMode: state.angleMode, ans: state.ans, vars: store.vars });
   closeAction();
   if (r.ok) {
