@@ -32,21 +32,16 @@
     <header id="statusbar">
       <span id="badge" class="badge">DEG</span>
       <button id="lang" class="lang" type="button">EN</button>
-      <div id="version">v6 · dev</div>
+      <div id="version">v7 · dev</div>
     </header>
 
     <section id="display">
-      <div id="expr" aria-label="expression"></div>
-      <div id="result"></div>
-    </section>
-
-    <div id="history-panel" hidden>
-      <div class="history-head">
-        <span id="history-title">History</span>
-        <button id="history-close" type="button">✕</button>
+      <div id="tape-scroll"><ul id="tape-list"></ul></div>
+      <div id="inputbar">
+        <div id="expr" aria-label="expression"></div>
+        <div id="result"></div>
       </div>
-      <ul id="history-list"></ul>
-    </div>
+    </section>
 
     <div id="toast" class="toast" hidden></div>
 
