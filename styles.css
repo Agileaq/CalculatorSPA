@@ -32,6 +32,14 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 #tape-list li:active { background: #141416; }
 #tape-list .h-expr { font-size: 18px; text-align: right; word-break: break-all; color: var(--muted); }
 #tape-list .h-res  { font-size: 22px; text-align: right; color: var(--text); }
+/* 条目操作行：点某条历史后在其下方展开 */
+.tape-action { display: flex; gap: 8px; justify-content: flex-end;
+  padding: 6px 16px 10px; }
+.tape-action button { background: var(--key); color: var(--text); border: none;
+  border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+.tape-action button:active { background: #333; }
+.tape-action .label { color: var(--muted); margin-right: auto; align-self: center;
+  font-size: 13px; letter-spacing: 1px; }
 /* 展开态：磁带变绝对定位覆盖层，盖住其上方键行；bottom 由 JS 按 ↺ 行上沿设置，露出 ↺ 整行 */
 #calc.tape-expanded #tape-scroll { position: absolute; left: 0; right: 0;
   top: 0; z-index: 12; background: rgba(0,0,0,.96); }

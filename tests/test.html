@@ -463,6 +463,16 @@
   test('i18n t() 未知 key 回退到 key 本身', () => {
     assertEqual(t('no.such.key'), 'no.such.key');
   });
+  test('i18n copied / pasteFail 六语言齐全', () => {
+    for (const key of ['copied', 'pasteFail']) {
+      for (const code of ['en','zh','fr','es','ru','ar']) {
+        setLocale(code);
+        const s = t(key);
+        if (!s || s === key) throw new Error('missing ' + key + ' for ' + code);
+      }
+    }
+    setLocale('en');
+  });
   test('i18n getLocaleMeta 返回当前语言元信息', () => {
     setLocale('ar');
     assertEqual(getLocaleMeta().code, 'ar');

@@ -15,6 +15,7 @@ const store = new Store();
 // 磁带：baselineTs=启动时最大 ts（区分本次会话 vs 旧历史）；showOlder=是否已接入旧历史。
 let baselineTs = store.history[0]?.ts ?? 0;
 let showOlder = false;
+let openActionTs = null;   // 当前展开 Action 行的条目 ts（null=无展开）
 
 const $ = (s) => document.querySelector(s);
 const exprEl = $('#expr'), resultEl = $('#result'), badgeEl = $('#badge');
@@ -68,6 +69,7 @@ const isNumDisplay = (a) => /^\d*\.?\d*$/.test(a) && a !== '';
 const tapeList = $('#tape-list'), tapeScroll = $('#tape-scroll');
 function renderTape() {
   tapeList.innerHTML = '';
+  openActionTs = null;   // 列表重建后清除悬空引用（下面重新绑定点击）
   for (const item of buildTape(store.history, baselineTs, showOlder)) {
     const li = document.createElement('li');
     li.dataset.ts = item.ts;
@@ -79,6 +81,52 @@ function renderTape() {
   }
 }
 function scrollTapeToBottom() { tapeScroll.scrollTop = tapeScroll.scrollHeight; }
+
+// 点条目 → 在其下展开 Action 行（Insert/Copy/Retry）；再点该条或点别处收起。
+function entryByTs(ts) { return store.history.find((h) => String(h.ts) === String(ts)); }
+function closeAction() {
+  openActionTs = null;
+  const ex = tapeList.querySelector('.tape-action');
+  if (ex) ex.remove();
+}
+function openAction(li, item) {
+  closeAction();
+  openActionTs = String(item.ts);
+  const row = document.createElement('li');   // 作为兄弟 li 插在被点条目后
+  row.className = 'tape-action';
+  row.innerHTML = '<span class="label">Action</span>';
+  const mk = (txt, fn) => { const b = document.createElement('button'); b.type = 'button';
+    b.textContent = txt; b.addEventListener('click', (e) => { e.stopPropagation(); fn(); }); return b; };
+  row.append(
+    mk('Insert', () => { editor.insertAtoms(item.atoms); state.resetRecall(); closeAction(); render(); }),
+    mk('Copy', () => { copyText(item.display); closeAction(); }),
+    mk('Retry', () => { retryEntry(item); }),
+  );
+  li.after(row);
+}
+
+async function copyText(s) {
+  try { await navigator.clipboard.writeText(s); showToast(t('copied')); }
+  catch { showToast(t('pasteFail')); }   // 复用文案：失败提示（无剪贴板权限）
+}
+
+function retryEntry(item) {
+  const r = evaluate(item.atoms, { angleMode: state.angleMode, ans: state.ans, vars: store.vars });
+  closeAction();
+  if (r.ok) {
+    state.ans = r.value; store.addHistory(item.atoms, r.display);
+    renderTape(); scrollTapeToBottom();
+  } else { showToast(r.error); }         // Retry 出错：轻提示，不动输入行
+}
+
+tapeList.addEventListener('click', (e) => {
+  const li = e.target.closest('li');
+  if (!li || li.classList.contains('tape-action')) return;
+  const item = entryByTs(li.dataset.ts);
+  if (!item) return;
+  if (openActionTs === String(item.ts)) { closeAction(); }
+  else { openAction(li, item); }
+});
 
 const calcEl = $('#calc');
 const historyBtn = document.querySelector('.key[data-id="history"]');

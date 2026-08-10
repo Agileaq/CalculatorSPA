@@ -58,6 +58,14 @@ const STRINGS = {
     en: 'Stored to {name}', zh: '已存入 {name}', fr: 'Enregistré dans {name}',
     es: 'Guardado en {name}', ru: 'Сохранено в {name}', ar: 'تم التخزين في {name}',
   },
+  copied: {
+    en: 'Copied', zh: '已复制', fr: 'Copié', es: 'Copiado',
+    ru: 'Скопировано', ar: 'تم النسخ',
+  },
+  pasteFail: {
+    en: 'Paste failed', zh: '粘贴失败', fr: 'Échec du collage', es: 'Error al pegar',
+    ru: 'Не удалось вставить', ar: 'فشل اللصق',
+  },
 
   // MATH panel group titles (stable keys; text changes with language)
   'math.trig': {
