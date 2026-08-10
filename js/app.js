@@ -135,7 +135,9 @@ function setExpanded(on) {
   expanded = on;
   calcEl.classList.toggle('tape-expanded', on);
   if (on) {
-    // 覆盖层底沿 = ↺ 按钮那一行的上沿（rect 测量，不硬编码行高），使 ↺ 行整行露出可点
+    // 展开 = 全量查看历史：接入旧历史(showOlder=true)，覆盖层底沿 = ↺ 行上沿，露出 ↺ 整行可点
+    showOlder = true;
+    // 覆盖层底沿 = ↺ 按钮那一行的上沿（rect 测量，不硬编码行高）
     const b = historyBtn.getBoundingClientRect().top;
     tapeScroll.style.bottom = (window.innerHeight - b) + 'px';
     renderTape(); scrollTapeToBottom();
