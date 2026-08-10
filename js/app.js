@@ -79,8 +79,41 @@ function renderTape() {
   }
 }
 function scrollTapeToBottom() { tapeScroll.scrollTop = tapeScroll.scrollHeight; }
-// Task 5 将替换为真正的展开/收起；此处先做安全占位。
-function toggleTapeExpand() { renderTape(); scrollTapeToBottom(); }
+
+const calcEl = $('#calc');
+const historyBtn = document.querySelector('.key[data-id="history"]');
+let expanded = false;
+function setExpanded(on) {
+  expanded = on;
+  calcEl.classList.toggle('tape-expanded', on);
+  if (on) {
+    // 覆盖层底沿 = ↺ 按钮那一行的下沿（rect 测量，不硬编码行高）
+    const b = historyBtn.getBoundingClientRect().bottom;
+    tapeScroll.style.bottom = (window.innerHeight - b) + 'px';
+    renderTape(); scrollTapeToBottom();
+  } else {
+    tapeScroll.style.bottom = '';
+  }
+}
+function toggleTapeExpand() { setExpanded(!expanded); }
+
+// 接入旧历史（顶端懒加载），保持滚动位置不跳
+function loadOlder() {
+  if (showOlder) return false;
+  const older = store.history.filter((h) => h.ts <= baselineTs);
+  if (!older.length) return false;
+  const oldH = tapeScroll.scrollHeight;
+  showOlder = true; renderTape();
+  tapeScroll.scrollTop += tapeScroll.scrollHeight - oldH;  // 锚定
+  return true;
+}
+
+// 复位到干净态：隐藏旧历史 + 收起展开 + 露输入行
+function resetTapeClean() {
+  showOlder = false;
+  if (expanded) setExpanded(false);
+  renderTape(); scrollTapeToBottom();
+}
 
 let toastTimer = null;
 function showToast(msg) {
@@ -390,6 +423,33 @@ const endDrag = (e) => {
 };
 exprEl.addEventListener('pointerup', endDrag);
 exprEl.addEventListener('pointercancel', endDrag);
+
+// overscroll 手势：顶端到顶再上拉→(先懒加载，再)展开；底端到底再下拉→复位干净态。
+const OVER = 48;                 // 触发阈值(px)
+let touchY = null, fired = false;
+tapeScroll.addEventListener('touchstart', (e) => { touchY = e.touches[0].clientY; fired = false; }, { passive: true });
+tapeScroll.addEventListener('touchmove', (e) => {
+  if (touchY === null || fired) return;
+  const dy = e.touches[0].clientY - touchY;              // 下拉为正
+  const atTop = tapeScroll.scrollTop <= 0;
+  const atBottom = tapeScroll.scrollTop + tapeScroll.clientHeight >= tapeScroll.scrollHeight - 1;
+  if (atTop && dy > OVER) {                              // 顶端继续下拉(内容下移=看更早)
+    fired = true;
+    if (!loadOlder()) setExpanded(true);                // 先接旧历史；已无更多则展开
+  } else if (atBottom && dy < -OVER) {                  // 底端继续上拉
+    fired = true; resetTapeClean();
+  }
+}, { passive: true });
+tapeScroll.addEventListener('touchend', () => { touchY = null; }, { passive: true });
+
+// 桌面 dev 调试：滚轮到端点后同方向再滚
+tapeScroll.addEventListener('wheel', (e) => {
+  const atTop = tapeScroll.scrollTop <= 0;
+  const atBottom = tapeScroll.scrollTop + tapeScroll.clientHeight >= tapeScroll.scrollHeight - 1;
+  if (atTop && e.deltaY < -OVER) { if (!loadOlder()) setExpanded(true); }
+  else if (atBottom && e.deltaY > OVER) { resetTapeClean(); }
+}, { passive: true });
+
 // Badge click toggles angle mode
 badgeEl.addEventListener('click', () => dispatch('deg'));
 // Language switch: cycle to the next official UN language
