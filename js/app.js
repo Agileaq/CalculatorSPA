@@ -18,7 +18,10 @@ let showOlder = false;
 let openActionTs = null;   // 当前展开 Action 行的条目 ts（null=无展开）
 
 const $ = (s) => document.querySelector(s);
-const exprEl = $('#expr'), resultEl = $('#result'), badgeEl = $('#badge');
+const badgeEl = $('#badge');
+// 当前输入行是磁带末项 <li class="h-current">；列表重建后元素更替，故用 getter 动态取。
+// exprEl() 返回 .h-current 内的 .h-expr（光标/拖拽/放大镜的目标）。
+const exprEl = () => tapeList.querySelector('.h-current .h-expr');
 const toastEl = $('#toast');
 const mathPanel = $('#math-panel'), mathBody = $('#math-body');
 const langEl = $('#lang'), historyTitleEl = $('#history-title'), mathTitleEl = $('#math-title');
@@ -30,14 +33,17 @@ const DISPLAY = {
 };
 const showAtom = (a) => DISPLAY[a] ?? a;
 
-function render() {
-  exprEl.innerHTML = '';
+// 渲染磁带末项（当前输入）的 .h-expr：光标 + .tok/.ch spans。目标 = .h-current .h-expr。
+function renderCurrentInput() {
+  const host = tapeList.querySelector('.h-current .h-expr');
+  if (!host) return;                          // 列表未建好(初始化前/重建瞬间)
+  host.innerHTML = '';
   const atoms = editor.atoms;
   const cur = editor.cursor, off = editor.offset;
   for (let i = 0; i <= atoms.length; i++) {
     // Cursor at an atom boundary (offset 0): before atoms[i] (or at end if i===len).
     if (i === cur && off === 0) {
-      const c = document.createElement('span'); c.className = 'cursor'; exprEl.appendChild(c);
+      const c = document.createElement('span'); c.className = 'cursor'; host.appendChild(c);
     }
     if (i < atoms.length) {
       const a = atoms[i];
@@ -58,10 +64,12 @@ function render() {
       } else {
         t.textContent = showAtom(a);
       }
-      exprEl.appendChild(t);
+      host.appendChild(t);
     }
   }
 }
+// 薄壳：保留 render() 名，避免改 40+ 调用点。等价于 renderCurrentInput()。
+function render() { renderCurrentInput(); }
 // A number atom renders char-by-char for hit-testing. DISPLAY-translated atoms like
 // 'sin(' are still single spans (no char-level cursor inside them). Only digit/. atoms.
 const isNumDisplay = (a) => /^\d*\.?\d*$/.test(a) && a !== '';
@@ -79,6 +87,13 @@ function renderTape() {
     li.append(e, r);
     tapeList.appendChild(li);
   }
+  // 末项：当前输入占位（.h-expr 由 renderCurrentInput 填充，.h-res 由回放/错误路径填）
+  const cur = document.createElement('li');
+  cur.className = 'h-current';
+  const e = document.createElement('div'); e.className = 'h-expr';
+  const r = document.createElement('div'); r.className = 'h-res'; r.hidden = true;
+  cur.append(e, r);
+  tapeList.appendChild(cur);
 }
 function scrollTapeToBottom() { tapeScroll.scrollTop = tapeScroll.scrollHeight; }
 
@@ -115,7 +130,7 @@ function retryEntry(item) {
   closeAction();
   if (r.ok) {
     state.ans = r.value; store.addHistory(item.atoms, r.display);
-    renderTape(); scrollTapeToBottom();
+    renderTape(); render(); scrollTapeToBottom();   // renderTape 重建 .h-current 后 render() 填光标
   } else { showToast(r.error); }         // Retry 出错：轻提示，不动输入行
 }
 
@@ -140,9 +155,10 @@ function setExpanded(on) {
     // 覆盖层底沿 = ↺ 按钮那一行的上沿（rect 测量，不硬编码行高）
     const b = historyBtn.getBoundingClientRect().top;
     tapeScroll.style.bottom = (window.innerHeight - b) + 'px';
-    renderTape(); scrollTapeToBottom();
+    renderTape(); render(); scrollTapeToBottom();   // renderTape 重建 .h-current 后 render() 填光标
   } else {
     tapeScroll.style.bottom = '';
+    render();   // 收起后补一次光标(renderTape 未重跑，但确保 .h-current 有光标)
   }
 }
 function toggleTapeExpand() { setExpanded(!expanded); }
@@ -153,7 +169,7 @@ function loadOlder() {
   const older = store.history.filter((h) => h.ts <= baselineTs);
   if (!older.length) return false;
   const oldH = tapeScroll.scrollHeight;
-  showOlder = true; renderTape();
+  showOlder = true; renderTape(); render();   // renderTape 重建 .h-current 后 render() 填光标
   tapeScroll.scrollTop += tapeScroll.scrollHeight - oldH;  // 锚定
   return true;
 }
@@ -162,7 +178,7 @@ function loadOlder() {
 function resetTapeClean() {
   showOlder = false;
   if (expanded) setExpanded(false);
-  renderTape(); scrollTapeToBottom();
+  renderTape(); render(); scrollTapeToBottom();   // renderTape 重建 .h-current 后 render() 填光标
 }
 
 let toastTimer = null;
@@ -199,18 +215,24 @@ function recallUp() {
   if (next >= hist.length) { showToast(t('noMoreHistory')); return; }
   state.recall = next;
   editor.setAtoms(hist[next].atoms);
-  resultEl.textContent = '= ' + hist[next].display;
-  resultEl.classList.remove('error');
+  setResultLine('= ' + hist[next].display, false);
 }
 function recallDown() {
-  if (state.recall === null) return; // not replaying: ∨ is a safe no-op
+  if (state.recall === null) return; // not replaying: ∨ 由 Task 5 改为 snap 回底
   const hist = store.history;
   const next = state.recall - 1;
-  if (next < 0) { state.resetRecall(); editor.clear(); resultEl.textContent = ''; return; }
+  if (next < 0) { state.resetRecall(); editor.clear(); setResultLine('', true); return; }
   state.recall = next;
   editor.setAtoms(hist[next].atoms);
-  resultEl.textContent = '= ' + hist[next].display;
-  resultEl.classList.remove('error');
+  setResultLine('= ' + hist[next].display, false);
+}
+// 结果线(回放值/错误)并入磁带末项 .h-current .h-res；正常打字时隐藏。
+function setResultLine(text, isError) {
+  const r = tapeList.querySelector('.h-current .h-res');
+  if (!r) return;
+  if (text === '') { r.hidden = true; r.textContent = ''; r.classList.remove('error'); return; }
+  r.hidden = false; r.textContent = text;
+  r.classList.toggle('error', !!isError);
 }
 
 function injectShiftLabels() {
@@ -253,10 +275,10 @@ function doEquals() {
   if (r.ok) {
     state.ans = r.value; store.addHistory(editor.atoms, r.display);
     editor.clear();                       // 提交后清空输入行
-    resultEl.textContent = ''; resultEl.classList.remove('error');
-    renderTape(); scrollTapeToBottom();   // 新条目落到磁带底部
+    setResultLine('', false);             // 提交成功:清结果线(新结果作为历史条目落在 .h-current 正上方)
+    renderTape(); renderCurrentInput(); scrollTapeToBottom();
   } else {
-    resultEl.textContent = r.error; resultEl.classList.add('error');  // 失败：保留算式，不入库
+    setResultLine(r.error, true);          // 失败:错误红,保留算式,不入库
   }
 }
 
@@ -313,7 +335,7 @@ function dispatch(id) {
 
   switch (action.kind) {
     case 'backspace': editor.backspace(); state.resetRecall(); break;
-    case 'clear': editor.clear(); resultEl.textContent = ''; resultEl.classList.remove('error'); state.resetRecall(); break;
+    case 'clear': editor.clear(); setResultLine('', false); state.resetRecall(); break;
     case 'left': editor.moveLeft(); break;
     case 'right': editor.moveRight(); break;
     case 'undo': editor.undo(); state.resetRecall(); break;
@@ -368,8 +390,8 @@ function displayString() {
 // centered; at the ends the translate is clamped so the cursor rides the near
 // border and the far side's half-char peeks at the opposite border (symmetric).
 function showMagnifier() {
-  const cur = exprEl.querySelector('.cursor');
-  const rect = exprEl.getBoundingClientRect();
+  const cur = exprEl().querySelector('.cursor');
+  const rect = exprEl().getBoundingClientRect();
   const realX = cur ? cur.getBoundingClientRect().left : rect.left + rect.width / 2;
   const vw = window.innerWidth;
   const { s, curIdx } = displayString();
@@ -414,7 +436,7 @@ function hideMagnifier() { magEl.hidden = true; }
 // (iOS-native long-press cursor drag). Cursor follows the finger live; pointer
 // is captured so the drag survives moving outside #expr without dropping.
 function nearestBoundary(x, y) {
-  const toks = exprEl.querySelectorAll('.tok');
+  const toks = exprEl().querySelectorAll(':scope > .tok');
   if (!toks.length) return null;                      // empty expr: nothing to do
   let best = null, bestLine = Infinity, bestDx = Infinity;
   // Collect candidate (x, {i,o}) pairs per token line fragment. For a number atom
@@ -444,19 +466,28 @@ function nearestBoundary(x, y) {
   return best;
 }
 let dragging = false;
-exprEl.addEventListener('pointerdown', (e) => {
+// TODO Task 4: delegate on tapeList with proper .h-current containment check.
+// Task 3 bridge: exprEl is now a getter function (no addEventListener), so attach
+// to the persistent tapeList and guard with a containment check so taps OUTSIDE
+// .h-current .h-expr are ignored (otherwise history-row taps would hijack the
+// cursor and suppress the click handler). Task 4 will rewrite this delegation.
+tapeList.addEventListener('pointerdown', (e) => {
+  const host = exprEl();
+  if (!host || !host.contains(e.target)) return;
   // Only touch/pen/mouse primary press starts a drag (not e.g. right-click).
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   const pos = nearestBoundary(e.clientX, e.clientY);
   if (pos === null) return;
   e.preventDefault();                                 // suppress text-selection long-press
   dragging = true;
-  try { exprEl.setPointerCapture(e.pointerId); } catch (_) {}
+  try { host.setPointerCapture(e.pointerId); } catch (_) {}
   editor.setCursor(pos.i, pos.o);                       // pure cursor move (no recall reset, like ‹ › keys)
   render();
   if (e.pointerType !== 'mouse') { magOn = true; showMagnifier(); }
 });
-exprEl.addEventListener('pointermove', (e) => {
+tapeList.addEventListener('pointermove', (e) => {
+  const host = exprEl();
+  if (!host || !host.contains(e.target)) return;
   if (!dragging) return;
   const pos = nearestBoundary(e.clientX, e.clientY);
   if (pos === null) return;
@@ -469,7 +500,7 @@ const endDrag = (e) => {
   dragging = false;
   magOn = false;
   hideMagnifier();
-  try { exprEl.releasePointerCapture(e.pointerId); } catch (_) {}
+  try { exprEl().releasePointerCapture(e.pointerId); } catch (_) {}
 };
 // double-touch 粘贴：两次 pointerup 间隔≤300ms 且位置相近 → 读剪贴板插到光标处。
 // 光标已由本次 pointerdown 的 nearestBoundary 定位，故直接在当前光标插入。
@@ -493,8 +524,8 @@ function maybeDoubleTap(e) {
   if (now - lastTapT < 300 && near) { lastTapT = 0; pasteAtCursor(); return; }
   lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY;
 }
-exprEl.addEventListener('pointerup', (e) => { endDrag(e); maybeDoubleTap(e); });
-exprEl.addEventListener('pointercancel', endDrag);
+tapeList.addEventListener('pointerup', (e) => { endDrag(e); maybeDoubleTap(e); });
+tapeList.addEventListener('pointercancel', endDrag);
 
 // overscroll 手势：顶端到顶再上拉→(先懒加载，再)展开；底端到底再下拉→复位干净态。
 const OVER = 48;                 // 触发阈值(px)
@@ -534,7 +565,7 @@ window.addEventListener('keydown', (e) => {
   if (id) { e.preventDefault(); dispatch(id); }
 });
 
-// Init
+// Init：renderTape 先建 .h-current 占位，再 render()（→ renderCurrentInput）填光标。
 injectShiftLabels();
 applyLocale();
-updateBadge(); updateShift(); render(); renderTape(); scrollTapeToBottom();
+updateBadge(); updateShift(); renderTape(); render(); scrollTapeToBottom();
