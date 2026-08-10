@@ -78,6 +78,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 .key.active { outline: 2px solid var(--yellow); outline-offset: -2px; }
 .key[data-id="left"], .key[data-id="right"], .key[data-id="redo"], .key[data-id="undo"],
 .key[data-id="mathUp"], .key[data-id="mathDown"] { color: var(--blue); }
+/* MATH 已实现：脱离 fn 行的 muted 灰，文字改纯白 */
+.key[data-id="math"] { color: var(--text); }
 /* History button: icon replaces the ↺ glyph */
 .key[data-id="history"] {
   color: transparent;
