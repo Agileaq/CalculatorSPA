@@ -32,12 +32,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 #tape-scroll::-webkit-scrollbar-track { background: #000; }
 #tape-scroll::-webkit-scrollbar-thumb { background: #3a3a3c; border-radius: 2px; }
 #tape-scroll::-webkit-scrollbar-thumb:hover { background: #5a5a5e; }
-#tape-list { list-style: none; width: 100%; margin-top: auto; }
+#tape-list { list-style: none; width: 100%; }
 /* 每个 <li> 统一顶分隔符：历史条目之间、历史与当前输入之间一致 */
 #tape-list li { padding: 6px 16px; cursor: pointer; border-top: 1px solid #1a1a1a; }
 #tape-list li:active { background: #141416; }
-#tape-list .h-expr { font-size: 18px; text-align: left; word-break: break-all; color: var(--muted); }
-#tape-list .h-res  { font-size: 22px; text-align: right; color: var(--text); }
+#tape-list .h-expr { font-size: 18px; text-align: left; word-break: break-all; color: var(--text); }
+#tape-list .h-res  { font-size: 18px; text-align: right; color: var(--text); }
 #tape-list .h-res.error { color: var(--red); }
 /* 当前输入（磁带末项，未完成条目）：同磁带条目样式，带闪烁光标，min-height 防塌缩 */
 .h-current { min-height: 44px; }

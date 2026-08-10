@@ -178,6 +178,7 @@ function loadOlder() {
 // 唯一复位出口：收叠历史(showOlder=false) + 关展开(磁带回原位、显输入行) + 收 Action + 清回放 + 滚底。
 function resetToNormal() {
   showOlder = false;
+  baselineTs = store.history[0]?.ts ?? 0;   // 移基线到最新 → 现有历史全部归为 older，会话清空 → 只剩 .h-current
   if (expanded) setExpanded(false);
   closeAction();
   state.resetRecall();
