@@ -15,6 +15,7 @@
   import { AppState } from '../js/state.js';
   import { ACTIONS, SHIFT_ACTIONS, KEYBOARD } from '../js/keymap.js';
   import { MATH_CATALOG } from '../js/mathmenu.js';
+  import { buildTape } from '../js/tape.js';
   import { LOCALES, getLocale, setLocale, cycleLocale, getLocaleMeta, t } from '../js/i18n.js';
 
   function memStorage() {
@@ -461,6 +462,32 @@
       const s = t(g.title);
       if (!s || s === g.title) throw new Error('unresolved title key ' + g.title);
     }
+  });
+
+  // ---- tape.buildTape ----
+  const mkHist = (...items) => items.map(([display, ts]) => ({ atoms: [display], display, ts }));
+  // history 为 newest-first（ts 大在前），模拟 store.history
+  const H = mkHist(['d4', 4], ['d3', 3], ['d2', 2], ['d1', 1]);
+
+  test('buildTape 默认只含会话(ts>baseline)、oldest-first', () => {
+    // baseline=2 ⇒ session = d3,d4 ；showOlder=false
+    const r = buildTape(H, 2, false).map(e => e.display).join(',');
+    assertEqual(r, 'd3,d4');
+  });
+  test('buildTape showOlder 拼接 older 在前，均 oldest-first', () => {
+    // baseline=2 ⇒ older = d1,d2 ; session = d3,d4
+    const r = buildTape(H, 2, true).map(e => e.display).join(',');
+    assertEqual(r, 'd1,d2,d3,d4');
+  });
+  test('buildTape baseline=0 全为会话', () => {
+    assertEqual(buildTape(H, 0, false).map(e => e.display).join(','), 'd1,d2,d3,d4');
+  });
+  test('buildTape 全为 older 时 showOlder=false 返回空', () => {
+    // baseline=4（≥ 所有 ts）⇒ session 为空
+    assertEqual(buildTape(H, 4, false).length, 0);
+  });
+  test('buildTape 空 history 返回空', () => {
+    assertEqual(buildTape([], 0, true).length, 0);
   });
 
   runAll();
