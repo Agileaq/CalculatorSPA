@@ -36,6 +36,9 @@ export class Editor {
     // offset stays 0
   }
 
+  // 批量插入：把一串原子按顺序插到当前光标处（复用 insertAtom 的数字分裂/合并逻辑）。
+  insertAtoms(atoms) { for (const a of atoms) this.insertAtom(a); }
+
   insertDigit(ch) {
     const a = this._atoms[this._cursor];
     if (this._offset > 0) {                                // inside a number

@@ -280,6 +280,18 @@
     assertEqual(e.atoms.join(','), '12,+,34');
     assertEqual(e.cursor, 2); assertEqual(e.offset, 0);
   });
+  test('insertAtoms 批量插入到光标处', () => {
+    const e = new Editor();
+    e.insertDigit('3'); e.insertAtom('*');            // ["3","*"] 光标在末尾
+    e.insertAtoms(['12', '+', '8']);
+    assertEqual(e.atoms.join(','), '3,*,12,+,8');
+  });
+  test('insertAtoms 空数组 no-op', () => {
+    const e = new Editor();
+    e.insertDigit('5');
+    e.insertAtoms([]);
+    assertEqual(e.atoms.join(','), '5');
+  });
   test('点号数字内不重复', () => {
     const e = new Editor();
     e.insertDigit('3'); e.insertDigit('.'); e.insertDigit('4');                     // ["3.4"]
