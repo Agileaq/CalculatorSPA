@@ -175,11 +175,14 @@ function loadOlder() {
   return true;
 }
 
-// 复位到干净态：隐藏旧历史 + 收起展开 + 露输入行
-function resetTapeClean() {
+// 唯一复位出口：收叠历史(showOlder=false) + 关展开(磁带回原位、显输入行) + 收 Action + 清回放 + 滚底。
+function resetToNormal() {
   showOlder = false;
   if (expanded) setExpanded(false);
-  renderTape(); render(); scrollTapeToBottom();   // renderTape 重建 .h-current 后 render() 填光标
+  closeAction();
+  state.resetRecall();
+  setResultLine('', false);
+  renderTape(); renderCurrentInput(); scrollTapeToBottom();
 }
 
 let toastTimer = null;
@@ -219,7 +222,12 @@ function recallUp() {
   setResultLine('= ' + hist[next].display, false);
 }
 function recallDown() {
-  if (state.recall === null) return; // not replaying: ∨ 由 Task 5 改为 snap 回底
+  if (state.recall === null) {              // 非 replay:∨ = snap 回底(看输入)
+    if (tapeScroll.scrollTop + tapeScroll.clientHeight < tapeScroll.scrollHeight - 1) {
+      scrollTapeToBottom();
+    }
+    return;
+  }
   const hist = store.history;
   const next = state.recall - 1;
   if (next < 0) { state.resetRecall(); editor.clear(); setResultLine('', true); return; }
@@ -336,7 +344,13 @@ function dispatch(id) {
 
   switch (action.kind) {
     case 'backspace': editor.backspace(); state.resetRecall(); break;
-    case 'clear': editor.clear(); setResultLine('', false); state.resetRecall(); break;
+    case 'clear':
+      if (editor.atoms.length > 0) {        // 输入非空 → 清空输入
+        editor.clear(); setResultLine('', false); state.resetRecall();
+      } else {                               // 输入已空 → 统一回正常态
+        resetToNormal();
+      }
+      break;
     case 'left': editor.moveLeft(); break;
     case 'right': editor.moveRight(); break;
     case 'undo': editor.undo(); state.resetRecall(); break;
@@ -542,8 +556,8 @@ tapeScroll.addEventListener('touchmove', (e) => {
   if (atTop && dy > OVER) {                              // 顶端继续下拉(内容下移=看更早)
     fired = true;
     if (!loadOlder()) setExpanded(true);                // 先接旧历史；已无更多则展开
-  } else if (atBottom && dy < -OVER) {                  // 底端继续上拉
-    fired = true; resetTapeClean();
+  } else if (atBottom && dy < -OVER) {                  // 底端继续上拉 → 回正常态
+    fired = true; resetToNormal();
   }
 }, { passive: true });
 tapeScroll.addEventListener('touchend', () => { touchY = null; }, { passive: true });
@@ -553,7 +567,7 @@ tapeScroll.addEventListener('wheel', (e) => {
   const atTop = tapeScroll.scrollTop <= 0;
   const atBottom = tapeScroll.scrollTop + tapeScroll.clientHeight >= tapeScroll.scrollHeight - 1;
   if (atTop && e.deltaY < -OVER) { if (!loadOlder()) setExpanded(true); }
-  else if (atBottom && e.deltaY > OVER) { resetTapeClean(); }
+  else if (atBottom && e.deltaY > OVER) { resetToNormal(); }
 }, { passive: true });
 
 // Badge click toggles angle mode
