@@ -340,6 +340,13 @@ function execAction(action) {
 }
 
 const INSERT_KINDS = new Set(['digit', 'atom', 'func', 'ans']);
+// 展开态(历史覆盖层遮挡 .h-current)下，任何改动输入/光标的动作都先收起覆盖层，
+// 让输入行回到视野再执行。纯面板/状态切换(angle/shift/history/math/sto)不在此列。
+const INPUT_MUTATING = new Set([
+  'digit', 'atom', 'func', 'ans',     // 插入
+  'backspace', 'clear', 'undo', 'redo', 'equals', // 编辑/提交
+  'left', 'right', 'historyUp', 'historyDown',   // 光标移动 / 回放(改输入)
+]);
 
 function dispatch(id) {
   const shifted = state.shift ? SHIFT_ACTIONS[id] : undefined;
@@ -351,6 +358,9 @@ function dispatch(id) {
   }
   const action = shifted || ACTIONS[id];
   if (!action) return;
+
+  // 展开态下改动输入：先收起，使输入行(.h-current)回到视野，再执行该动作。
+  if (expanded && INPUT_MUTATING.has(action.kind)) setExpanded(false);
 
   if (INSERT_KINDS.has(action.kind)) {
     execAction(action);
