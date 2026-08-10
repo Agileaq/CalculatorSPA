@@ -389,10 +389,26 @@ function dispatch(id) {
 }
 
 // Button clicks
-document.querySelector('#keypad').addEventListener('click', (e) => {
-  const btn = e.target.closest('button[data-id]');
-  if (btn) dispatch(btn.dataset.id);
+// Keypad input: pointerup (not click). Mobile browsers synthesize `click`
+// after touchend with throttling/dedup that can DROP rapid taps (symptom:
+// fast-typing 123456789 yields 1234589; fast-tapping the same key 10× yields 9).
+// pointerup fires immediately per touch and is not dropped. A physical
+// keyboard shows no loss, confirming the JS path is fast enough — the loss
+// is purely mobile click-suppression. Guard against drag-misfires: only
+// dispatch when pointerup lands on the same key that pointerdown pressed.
+const keypadEl = document.querySelector('#keypad');
+let pressedKey = null;
+keypadEl.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) { pressedKey = null; return; }
+  pressedKey = e.target.closest('button[data-id]');
 });
+keypadEl.addEventListener('pointerup', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) { pressedKey = null; return; }
+  const upBtn = e.target.closest('button[data-id]');
+  if (pressedKey && upBtn === pressedKey) dispatch(upBtn.dataset.id);
+  pressedKey = null;
+});
+keypadEl.addEventListener('pointercancel', () => { pressedKey = null; });
 // Magnifier loupe: while dragging on touch/pen, float a magnified horizontal
 // window directly above the current input line (.h-current .h-expr), centered
 // on the cursor (not the finger) so the magnified cursor overlays the real

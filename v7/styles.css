@@ -63,7 +63,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
   background: #111; padding: 1px 1px 6px; }
 .key { border: none; background: var(--key); color: var(--text); font-size: 22px;
   padding: 16px 0; cursor: pointer; user-select: none; transition: background .08s;
-  position: relative; }
+  position: relative; touch-action: manipulation; }
 .key .second { position: absolute; top: 4px; left: 6px; font-size: 11px; color: var(--yellow); }
 .key:active { background: #333; }
 .key.fn { font-size: 15px; color: var(--muted); background: var(--panel); }
@@ -118,11 +118,11 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
    cursor rides the near border and the far side's half-char peeks at the
    opposite border (symmetric at both ends). ~2.1× zoom (font 38px vs the input
    line's 18px); ch-based width tracks the font, no hand-picked px. */
-#magnifier { position: fixed; left: 0; top: 0; width: 9ch;
+#magnifier { position: fixed; left: 0; top: 0; width: 10.125ch;
   border-radius: 6px; overflow: hidden; pointer-events: none; z-index: 30;
   border: 2px solid rgba(255,255,255,.5); background: var(--bg);
   box-shadow: 0 6px 16px rgba(0,0,0,.6); }
-#magnifier .content { position: relative; width: 9ch; height: 38px; overflow: hidden;
+#magnifier .content { position: relative; width: 10.125ch; height: 38px; overflow: hidden;
   font-size: 38px; line-height: 1; color: var(--text);
   font-family: -apple-system, system-ui, sans-serif; white-space: nowrap; }
 #magnifier .content .line { position: absolute; top: 0; left: 0; white-space: nowrap;
