@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#000000">
-  <meta name="robots" content="noindex">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
@@ -20,19 +19,14 @@
   <link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png">
   <link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png">
-  <title>Calculator · dev</title>
+  <title>Calculator</title>
 </head>
 <body>
-  <!--
-    DEV preview page: references the root js/ (working copy), live edits reload fresh.
-    For local preview: localhost:8000/dev.html
-    The live production entry is the root / (auto-redirects to the current version snapshot vN/).
-  -->
   <div id="calc">
     <header id="statusbar">
       <span id="badge" class="badge">DEG</span>
       <button id="lang" class="lang" type="button">EN</button>
-      <div id="version">v7a · dev</div>
+      <div id="version">v7a</div>
     </header>
 
     <section id="display">
@@ -108,7 +102,9 @@
 
   <script type="module" src="js/app.js"></script>
   <script>
-    // dev preview does not register the service worker, so every reload fetches the fresh working copy.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+    }
   </script>
 </body>
 </html>
