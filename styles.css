@@ -33,34 +33,31 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 #tape-scroll::-webkit-scrollbar-thumb { background: #3a3a3c; border-radius: 2px; }
 #tape-scroll::-webkit-scrollbar-thumb:hover { background: #5a5a5e; }
 #tape-list { list-style: none; width: 100%; margin-top: auto; }
-#tape-list li { padding: 6px 16px; cursor: pointer; }
+/* 每个 <li> 统一顶分隔符：历史条目之间、历史与当前输入之间一致 */
+#tape-list li { padding: 6px 16px; cursor: pointer; border-top: 1px solid #1a1a1a; }
 #tape-list li:active { background: #141416; }
 #tape-list .h-expr { font-size: 18px; text-align: left; word-break: break-all; color: var(--muted); }
 #tape-list .h-res  { font-size: 22px; text-align: right; color: var(--text); }
-/* 条目操作行：点某条历史后在其下方展开 */
+#tape-list .h-res.error { color: var(--red); }
+/* 当前输入（磁带末项，未完成条目）：同磁带条目样式，带闪烁光标，min-height 防塌缩 */
+.h-current { min-height: 44px; }
+.h-current .h-expr { cursor: text; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; touch-action: none; }
+.h-current .cursor { display: inline-block; width: 2px; height: 18px; background: var(--text);
+  vertical-align: middle; animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+/* 条目操作行：点某条历史后在其下方展开（不附在 .h-current 上） */
 .tape-action { display: flex; gap: 8px; justify-content: flex-end;
-  padding: 6px 16px 10px; }
+  padding: 6px 16px 10px; border-top: 1px solid #1a1a1a; }
 .tape-action button { background: var(--key); color: var(--text); border: none;
   border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
 .tape-action button:active { background: #333; }
 .tape-action .label { color: var(--muted); margin-right: auto; align-self: center;
   font-size: 13px; letter-spacing: 1px; }
-/* 展开态：磁带变绝对定位覆盖层，盖住其上方键行；bottom 由 JS 按 ↺ 行上沿设置，露出 ↺ 整行 */
+/* 展开态：磁带变绝对定位覆盖层；隐藏当前输入条目（替代原隐藏 #inputbar） */
 #calc.tape-expanded #tape-scroll { position: absolute; left: 0; right: 0;
   top: 0; z-index: 12; background: rgba(0,0,0,.96); }
-#calc.tape-expanded #inputbar { display: none; }
-/* 底部固定输入行：算式左对齐，结果右对齐 */
-#inputbar { flex: none; display: flex; flex-direction: column; align-items: stretch;
-  padding: 12px 16px 16px; border-top: 1px solid #1a1a1a; }
-#expr { font-size: 32px; line-height: 1.4; word-break: break-all; text-align: left;
-  min-height: 44px; width: 100%;
-  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-  touch-action: none; cursor: text; }
-#expr .cursor { display: inline-block; width: 2px; height: 32px; background: var(--text);
-  vertical-align: middle; animation: blink 1s step-end infinite; }
-@keyframes blink { 50% { opacity: 0; } }
-#result { font-size: 24px; color: var(--muted); margin-top: 12px; text-align: right; }
-#result.error { color: var(--red); }
+#calc.tape-expanded #tape-list .h-current { display: none; }
 
 #keypad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px;
   background: #111; padding: 1px 1px 6px; }
