@@ -113,7 +113,7 @@ function openAction(li, item) {
   const mk = (txt, fn) => { const b = document.createElement('button'); b.type = 'button';
     b.textContent = txt; b.addEventListener('click', (e) => { e.stopPropagation(); fn(); }); return b; };
   row.append(
-    mk('Insert', () => { editor.insertAtoms(item.atoms); state.resetRecall(); closeAction(); render(); scrollTapeToBottom(); }),
+    mk('Insert', () => { if (expanded) setExpanded(false); editor.insertAtoms(item.atoms); state.resetRecall(); closeAction(); render(); scrollTapeToBottom(); }),
     mk('Copy', () => { copyText(item.display); closeAction(); }),
     mk('Retry', () => { retryEntry(item); }),
   );
