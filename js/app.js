@@ -5,15 +5,20 @@ import { Store } from './history.js';
 import { evaluate } from './engine.js';
 import { ACTIONS, SHIFT_ACTIONS, KEYBOARD } from './keymap.js';
 import { MATH_CATALOG } from './mathmenu.js';
+import { buildTape } from './tape.js';
 import { t, cycleLocale, getLocaleMeta } from './i18n.js';
 
 const editor = new Editor();
 const state = new AppState();
 const store = new Store();
 
+// 磁带：baselineTs=启动时最大 ts（区分本次会话 vs 旧历史）；showOlder=是否已接入旧历史。
+let baselineTs = store.history[0]?.ts ?? 0;
+let showOlder = false;
+
 const $ = (s) => document.querySelector(s);
 const exprEl = $('#expr'), resultEl = $('#result'), badgeEl = $('#badge');
-const toastEl = $('#toast'), panel = $('#history-panel'), list = $('#history-list');
+const toastEl = $('#toast');
 const mathPanel = $('#math-panel'), mathBody = $('#math-body');
 const langEl = $('#lang'), historyTitleEl = $('#history-title'), mathTitleEl = $('#math-title');
 
@@ -59,6 +64,23 @@ function render() {
 // A number atom renders char-by-char for hit-testing. DISPLAY-translated atoms like
 // 'sin(' are still single spans (no char-level cursor inside them). Only digit/. atoms.
 const isNumDisplay = (a) => /^\d*\.?\d*$/.test(a) && a !== '';
+
+const tapeList = $('#tape-list'), tapeScroll = $('#tape-scroll');
+function renderTape() {
+  tapeList.innerHTML = '';
+  for (const item of buildTape(store.history, baselineTs, showOlder)) {
+    const li = document.createElement('li');
+    li.dataset.ts = item.ts;
+    const e = document.createElement('div'); e.className = 'h-expr';
+    e.textContent = item.atoms.map(showAtom).join('');
+    const r = document.createElement('div'); r.className = 'h-res'; r.textContent = '= ' + item.display;
+    li.append(e, r);
+    tapeList.appendChild(li);
+  }
+}
+function scrollTapeToBottom() { tapeScroll.scrollTop = tapeScroll.scrollHeight; }
+// Task 5 将替换为真正的展开/收起；此处先做安全占位。
+function toggleTapeExpand() { renderTape(); scrollTapeToBottom(); }
 
 let toastTimer = null;
 function showToast(msg) {
@@ -146,25 +168,13 @@ function openMath() {
 function doEquals() {
   const r = evaluate(editor.atoms, { angleMode: state.angleMode, ans: state.ans, vars: store.vars });
   if (r.ok) {
-    resultEl.textContent = r.display; resultEl.classList.remove('error');
     state.ans = r.value; store.addHistory(editor.atoms, r.display);
+    editor.clear();                       // 提交后清空输入行
+    resultEl.textContent = ''; resultEl.classList.remove('error');
+    renderTape(); scrollTapeToBottom();   // 新条目落到磁带底部
   } else {
-    resultEl.textContent = r.error; resultEl.classList.add('error');
+    resultEl.textContent = r.error; resultEl.classList.add('error');  // 失败：保留算式，不入库
   }
-}
-
-function openHistory() {
-  list.innerHTML = '';
-  for (const item of store.history) {
-    const li = document.createElement('li');
-    const e = document.createElement('div'); e.className = 'h-expr';
-    e.textContent = item.atoms.map(showAtom).join('');
-    const res = document.createElement('div'); res.className = 'h-res'; res.textContent = '= ' + item.display;
-    li.append(e, res);
-    li.addEventListener('click', () => { editor.setAtoms(item.atoms); state.resetRecall(); panel.hidden = true; render(); });
-    list.appendChild(li);
-  }
-  panel.hidden = false;
 }
 
 function doSto() {
@@ -228,7 +238,7 @@ function dispatch(id) {
     case 'equals': doEquals(); state.resetRecall(); break;
     case 'toggleAngle': state.toggleAngleMode(); updateBadge(); return;
     case 'toggleShift': state.toggleShift(); updateShift(); return;
-    case 'history': openHistory(); return;
+    case 'history': toggleTapeExpand(); return;
     case 'math': openMath(); return;
     case 'sto': doSto(); return;
     case 'historyUp': recallUp(); updateShift(); render(); return;
@@ -384,8 +394,6 @@ exprEl.addEventListener('pointercancel', endDrag);
 badgeEl.addEventListener('click', () => dispatch('deg'));
 // Language switch: cycle to the next official UN language
 langEl.addEventListener('click', () => { cycleLocale(); applyLocale(); });
-// History close
-document.querySelector('#history-close').addEventListener('click', () => { panel.hidden = true; });
 // MATH close
 document.querySelector('#math-close').addEventListener('click', () => { mathPanel.hidden = true; });
 // Physical keyboard
@@ -397,4 +405,4 @@ window.addEventListener('keydown', (e) => {
 // Init
 injectShiftLabels();
 applyLocale();
-updateBadge(); updateShift(); render();
+updateBadge(); updateShift(); render(); renderTape(); scrollTapeToBottom();
