@@ -269,7 +269,8 @@ git commit -m "feat: add Editor.insertAtoms for batch insert"
 /* 磁带：可滚动历史区。用 #tape-list 的 margin-top:auto 把少量条目推到底，
    而不是 #tape-scroll 的 justify-content:flex-end —— 后者在 Chromium 下会让
    溢出内容的顶部不可达(scrollTop 卡 0)，磁带滚不动。min-height:0 允许收缩滚动。 */
-#tape-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+#tape-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; }
 #tape-list { list-style: none; width: 100%; margin-top: auto; }
 #tape-list li { padding: 6px 16px; cursor: pointer; }
 #tape-list li:active { background: #141416; }
