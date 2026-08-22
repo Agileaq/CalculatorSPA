@@ -7,6 +7,7 @@ import { ACTIONS, SHIFT_ACTIONS, KEYBOARD } from './keymap.js';
 import { MATH_CATALOG } from './mathmenu.js';
 import { buildTape } from './tape.js';
 import { t, cycleLocale, getLocaleMeta } from './i18n.js';
+import { initUpdater } from './update.js';
 
 const editor = new Editor();
 const state = new AppState();
@@ -632,3 +633,5 @@ window.addEventListener('keydown', (e) => {
 injectShiftLabels();
 applyLocale();
 updateBadge(); updateShift(); renderTape(); render(); scrollTapeToBottom();
+// SW prompt-style update: register + detect + banner (no-op in dev.html via body[data-dev])
+initUpdater();
