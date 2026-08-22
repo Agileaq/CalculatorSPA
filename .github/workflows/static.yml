@@ -31,6 +31,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Stamp commit SHA into cache + badge
+        # Auto-update trigger (option B): inject the short commit SHA into sw.js
+        # CACHE string and the version badges so every push makes sw.js byte-diff
+        # (the SW update-detection trigger) WITHOUT requiring a manual version bump.
+        # The human-readable version (v8, v9...) is still bumped manually for real
+        # releases; the SHA is the per-commit cache key that prompts installed PWAs.
+        run: |
+          SHA="${GITHUB_SHA::7}"
+          perl -i -pe "s/const CACHE = \"calc-([a-z0-9]+)\";/const CACHE = \"calc-\$1-${SHA}\";/" sw.js
+          perl -i -pe "s|(<div id=\"version\">v[0-9a-z]+)(</div>)|\$1 · ${SHA}\$2|" index.html
+          perl -i -pe "s|(<div id=\"version\">v[0-9a-z]+) · dev(</div>)|\$1 · ${SHA} · dev\$2|" dev.html
+          echo "Stamped commit ${SHA}:"
+          grep '^const CACHE' sw.js
+          grep 'id="version"' index.html
+          grep 'id="version"' dev.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact

@@ -87,25 +87,39 @@ This `sawUpdate` flag (set when the banner shows) gates the reload — first ins
 
 ### The single source of truth = `sw.js` `CACHE`
 
-`const CACHE = "calc-v7f";` in `sw.js` (and the `#version` badge text in `index.html`, and the `dev.html` label) is the version. **Bumping the `CACHE` string is what triggers the update** — the browser sees a byte-diff on `sw.js`. No `version.json`, no separate version file.
+`const CACHE = "calc-v8g";` in `sw.js` (and the `#version` badge text in `index.html`, and the `dev.html` label) is the version. **Bumping the `CACHE` string is what triggers the update** — the browser sees a byte-diff on `sw.js`. No `version.json`, no separate version file.
 
-### To release a new version (e.g. v7f → v8)
+### Auto-stamp: every push triggers the update banner (no manual bump needed)
+
+`.github/workflows/static.yml` has a **"Stamp commit SHA into cache + badge"** step that runs after checkout, before the Pages upload. On every push to `master` it rewrites three files **in the deployed artifact only** (the repo's working copy is NOT modified — the stamp lives in the workflow run, not in git):
+
+- `sw.js` `CACHE`: `"calc-v8g"` → `"calc-v8g-<7char-SHA>"` (e.g. `"calc-v8g-abcdef1"`).
+- `index.html` `#version`: `v8g` → `v8g · abcdef1`.
+- `dev.html` `#version`: `v8g · dev` → `v8g · abcdef1 · dev`.
+
+The stamp uses perl one-liners with **capture groups that preserve the human version** (`calc-([a-z0-9]+)` → `calc-$1-<SHA>`), so a future bump to `v9` stamps to `calc-v9-<SHA>`, not `calc-v8g-<SHA>`. It is **idempotent**: the `-` and ` · ` separators break the regex on an already-stamped string, so re-runs (e.g. workflow re-trigger) don't double-stamp.
+
+**Why this exists:** so every push reaches installed (Add-to-Home-Screen) PWAs without a manual `CACHE` bump. The byte-diff on `sw.js` (the SHA in `CACHE` changed) is what the browser's SW update detector keys on — the SHA is the per-commit cache key. The **human-readable version** (`v8g`, `v9`...) is still bumped **manually** for real releases; the SHA suffix is the automatic per-commit prompt.
+
+**Consequence — banner fatigue is real:** because *every* push now triggers, typo/WIP/experimental commits also prompt installed users. Treat `master` as shippable. If you want a commit to NOT reach installed users, either don't push it to `master` (use a throwaway local branch) or accept that it will prompt. There is no "push but skip the stamp" escape hatch by design — the stamp step is unconditional.
+
+### To release a new human-readable version (e.g. v8g → v9)
 
 1. Implement on the trunk (`js/`, `styles.css`, etc.) and verify via `dev.html` + `tests/test.html`.
-2. Bump `sw.js` `CACHE` to the new tag (e.g. `"calc-v8"`).
-3. Bump root `index.html` `#version` badge to the new label (e.g. `v8`).
-4. Bump `dev.html` version label (e.g. `v7f · dev` → `v8 · dev`).
-5. Commit and push — the Pages workflow deploys automatically. That's the entire release: no snapshot dir, no gate flip, no per-version copy.
+2. Bump `sw.js` `CACHE` to the new tag (e.g. `"calc-v9"`). NOTE: the workflow will further append `-<SHA>` at deploy time → `calc-v9-<SHA>`.
+3. Bump root `index.html` `#version` badge to the new label (e.g. `v9`). The workflow appends ` · <SHA>` → `v9 · <SHA>`.
+4. Bump `dev.html` version label (e.g. `v8g · dev` → `v9 · dev`). The workflow inserts the SHA → `v9 · <SHA> · dev`.
+5. Commit and push — the Pages workflow deploys automatically, stamping the SHA. That's the entire release: no snapshot dir, no gate flip, no per-version copy.
 
-### Patch releases (v8 → v8a) — same as a full release
+### Patch releases (v9 → v9a) — same as a full release
 
-There is no longer a distinction between "full" and "patch" releases at the directory level (there's only one directory). A **patch release** (v8 → **v8a**) is just another `CACHE` + badge bump:
+There is no longer a distinction between "full" and "patch" releases at the directory level (there's only one directory). A **patch release** (v9 → **v9a**) is just another `CACHE` + badge bump:
 
-- `sw.js` `CACHE`: `"calc-v8"` → `"calc-v8a"` (forces installed clients to drop the old cache and refetch).
-- Root `index.html` `#version` badge: `v8` → `v8a` (so the live page shows the patch level — if the badge still said `v8`, the SW hasn't refetched yet).
-- `dev.html` label: `v8 · dev` → `v8a · dev`.
+- `sw.js` `CACHE`: `"calc-v9"` → `"calc-v9a"` (workflow stamps → `"calc-v9a-<SHA>"`).
+- Root `index.html` `#version` badge: `v9` → `v9a` (workflow stamps → `v9a · <SHA>`).
+- `dev.html` label: `v9 · dev` → `v9a · dev` (workflow stamps → `v9a · <SHA> · dev`).
 
-Rule of thumb: **the version tag is a cache-version string, not a directory.** Bump it for every release, full or patch.
+Rule of thumb: **the version tag is a cache-version string, not a directory.** Bump it for every real release, full or patch — the SHA suffix handles per-commit prompting in between.
 
 ### `vN/` snapshot directories — frozen rollback backups only
 
