@@ -17,6 +17,7 @@
   import { MATH_CATALOG } from '../js/mathmenu.js';
   import { buildTape } from '../js/tape.js';
   import { LOCALES, getLocale, setLocale, cycleLocale, getLocaleMeta, t } from '../js/i18n.js';
+  import { shouldShowBanner } from '../js/update.js';
 
   function memStorage() {
     const m = {};
@@ -563,6 +564,21 @@
       assertEqual(t('update.reload').length > 0, true);
     }
     setLocale('en');
+  });
+
+  // ---- update.js banner state machine (pure decision, no real SW) ----
+  test('shouldShowBanner: installed + has controller → true', () => {
+    assertEqual(shouldShowBanner('installed', true), true);
+  });
+  test('shouldShowBanner: installed 但无 controller(首次安装) → false', () => {
+    assertEqual(shouldShowBanner('installed', false), false);
+  });
+  test('shouldShowBanner: installing 态不提示', () => {
+    assertEqual(shouldShowBanner('installing', true), false);
+  });
+  test('shouldShowBanner: activating/activated 不提示(此时已无 waiting)', () => {
+    assertEqual(shouldShowBanner('activating', true), false);
+    assertEqual(shouldShowBanner('activated', true), false);
   });
 
   runAll();

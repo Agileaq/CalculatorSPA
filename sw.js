@@ -4,7 +4,7 @@ const ASSETS = [
   './js/app.js', './js/tokens.js', './js/state.js', './js/history.js',
   './js/engine.js', './js/lexer.js', './js/parser.js', './js/evaluator.js',
   './js/formatter.js', './js/keymap.js', './js/mathmenu.js',
-  './js/i18n.js', './js/tape.js',
+  './js/i18n.js', './js/tape.js', './js/update.js',
   './manifest.webmanifest',
   './icons/icon.svg',
   './icons/icon-192.png', './icons/icon-512.png',
