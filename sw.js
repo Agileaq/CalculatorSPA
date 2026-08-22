@@ -1,4 +1,4 @@
-const CACHE = "calc-v8c";
+const CACHE = "calc-v8f";
 const ASSETS = [
   './', './index.html', './styles.css',
   './js/app.js', './js/tokens.js', './js/state.js', './js/history.js',
