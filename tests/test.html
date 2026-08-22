@@ -549,6 +549,22 @@
     assertEqual(e.atoms.join(','), '2,+,3');
   });
 
+  // ---- Update banner i18n keys ----
+  test('i18n: update.available / update.reload 存在且 en 兜底', () => {
+    setLocale('en');
+    assertEqual(t('update.available'), 'New version available');
+    assertEqual(t('update.reload'), 'Update');
+  });
+  test('i18n: update.* 至少 6 语言齐全', () => {
+    for (const loc of LOCALES) {
+      setLocale(loc.code);
+      assertEqual(typeof t('update.available'), 'string');
+      assertEqual(t('update.available').length > 0, true);
+      assertEqual(t('update.reload').length > 0, true);
+    }
+    setLocale('en');
+  });
+
   runAll();
 </script>
 </body></html>

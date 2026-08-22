@@ -71,6 +71,18 @@ const STRINGS = {
     ru: 'Нет Ans для продолжения', ar: 'لا يوجد Ans للمتابعة',
   },
 
+  // Update banner (SW prompt-style update)
+  'update.available': {
+    en: 'New version available', zh: '新版本可用',
+    fr: 'Nouvelle version disponible', es: 'Nueva versión disponible',
+    ru: 'Доступна новая версия', ar: 'إصدار جديد متاح',
+  },
+  'update.reload': {
+    en: 'Update', zh: '更新',
+    fr: 'Mettre à jour', es: 'Actualizar',
+    ru: 'Обновить', ar: 'تحديث',
+  },
+
   // MATH panel group titles (stable keys; text changes with language)
   'math.trig': {
     en: 'Trigonometry', zh: '三角函数', fr: 'Trigonométrie', es: 'Trigonometría',
