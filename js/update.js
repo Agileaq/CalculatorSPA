@@ -10,6 +10,15 @@ export function shouldShowBanner(workerState, hasController) {
   return workerState === 'installed' && hasController === true;
 }
 
+// Pure: should controllerchange trigger a reload? Only on a genuine update
+// (a controller existed BEFORE the new SW took over), never on first install.
+// sw.js's activate → self.clients.claim() transitions controller null→new SW
+// on every install including the first, which fires controllerchange — so the
+// reload must be guarded by the captured pre-registration controller state.
+export function shouldReloadOnControllerChange(hadController) {
+  return hadController === true;
+}
+
 // Side-effecting: wire the whole update UX. Safe no-op if SW unsupported,
 // dev preview (body[data-dev]), or the banner element is missing.
 export function initUpdater() {
@@ -19,6 +28,10 @@ export function initUpdater() {
   if (!banner) return;
   const textEl = banner.querySelector('[data-update-text]');
   const actionEl = banner.querySelector('[data-update-action]');
+  // Capture BEFORE registering: was a prior SW controlling this page? On first
+  // install this is false; on a genuine update it is true. Guards the
+  // controllerchange reload below so cold installs don't reload the page.
+  const hadController = !!navigator.serviceWorker.controller;
 
   function fillBanner() {
     if (textEl) textEl.textContent = t('update.available');
@@ -53,6 +66,9 @@ export function initUpdater() {
     });
   }
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
+    // First install: controller went null→new SW via clients.claim(), firing
+    // controllerchange — DON'T reload. Genuine update: prior SW was controlling
+    // (hadController captured pre-registration) → reload to pick up the new SW.
+    if (shouldReloadOnControllerChange(hadController)) window.location.reload();
   });
 }
