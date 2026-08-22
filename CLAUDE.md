@@ -13,7 +13,7 @@ The repo lives on `master` and is developed directly on `master` (explicit stand
 Run locally (must be over HTTP — `file://` breaks ES modules and the service worker):
 ```bash
 python3 -m http.server 8000
-# Production view (versioned, with SW):  http://localhost:8000/        → redirects to /vN/
+# Production view (cached, served by SW): http://localhost:8000/
 # Trunk preview (no SW, live edits):    http://localhost:8000/dev.html
 ```
 
@@ -73,40 +73,53 @@ Casio REPLAY-style traversal in `recallUp()`/`recallDown()` (`app.js`):
 - `DISPLAY` map in `app.js` translates atoms for display: `*`→`×`, `/`→`÷`, `pi`→`π`, `sqrt(`→`√(`, `nCr`→`C`, `nPr`→`P`, etc. Add new display glyphs here, not in the engine.
 - Error model is **gentle**: errors show in the result line (`Syntax Error` / `Math Error`), the expression is preserved, and the calculator never locks. Don't change this to a hard reset.
 
-## Version-gate release flow (critical, non-obvious)
+## Release flow: single-trunk + SW prompt-update (critical, non-obvious)
 
-The repo is **not** served from the trunk. The root `index.html` is a *gate* that redirects to a frozen per-version snapshot directory, and `dev.html` is the only thing that runs the live trunk working copy.
+The repo is served **from the trunk root**: `index.html` is the real app shell, `sw.js` is the one and only service worker (scoped to the repo root), and `dev.html` is the no-SW trunk preview. There is **no version-gate redirect** and **no per-version snapshot directory** that users boot from.
 
-- **Root `index.html`**: redirects to `/vN/` via `<meta http-equiv="refresh" content="0; url=vN/">` + `location.replace('vN/')` (replace so the back button isn't trapped). The two `当前版本：vN` comment markers are the single source of truth for "what is current" — flip both, plus the `url=vN/`, the `版本 <b>vN</b>`, the `点此进入` `href`, and the `location.replace('vN/')`.
-- **`vN/` directories**: frozen, self-contained snapshots (own `index.html`, `js/`, `styles.css`, `manifest.webmanifest`, `sw.js`, `icons/`). All paths relative. **Old snapshots (`v5/`, …) are preserved unchanged as rollback targets** — never edit a released snapshot's content except to build the next one.
-- **Trunk** lives at the repo root: `js/`, `styles.css`, `sw.js`, `manifest.webmanifest`, `dev.html`. `dev.html` references the trunk `js/` and deliberately does **not** register the service worker, so edits reload fresh.
-- **`sw.js`** is cache-first with `CACHE = 'calc-vN'`; `activate` deletes non-current caches. The cache name **must** be bumped on every release or clients keep stale assets.
+Installed (Add-to-Home-Screen) PWAs **actively discover new versions**: the browser re-fetches `sw.js` (bypassing HTTP cache for the SW script) on navigation and ~every 24h; when the bytes differ (because the `CACHE` string changed), a new SW installs in the **waiting** state; `js/update.js` detects it via `updatefound`/`statechange`, shows a yellow `#update-banner`, and on tap sends `{type:'SKIP_WAITING'}` → the waiting SW activates → `controllerchange` → `location.reload()` → fresh assets from the new cache. iOS survival: `visibilitychange` + hourly `registration.update()` (iOS suspends installed PWAs).
 
-### To release a new version (e.g. v6 → v7)
+### The single source of truth = `sw.js` `CACHE`
+
+`const CACHE = "calc-v7f";` in `sw.js` (and the `#version` badge text in `index.html`, and the `dev.html` label) is the version. **Bumping the `CACHE` string is what triggers the update** — the browser sees a byte-diff on `sw.js`. No `version.json`, no separate version file.
+
+### To release a new version (e.g. v7f → v8)
+
 1. Implement on the trunk (`js/`, `styles.css`, etc.) and verify via `dev.html` + `tests/test.html`.
-2. Bump `sw.js` `CACHE` to `'calc-v7'`.
-3. Create `v7/`: copy trunk `styles.css`, `manifest.webmanifest`, `sw.js`, and all `js/*.js` into it, plus `icons/` from the prior snapshot. Seed `v7/index.html` from the prior `vN/index.html`, then update the `#version` label and any new button attributes (e.g. dropping `data-placeholder` on keys that became real).
-4. Flip root `index.html`: both `当前版本：v7` markers, the redirect URL, the version badge text, the manual link, and `location.replace('v7/')`.
-5. Bump the `dev.html` version label (e.g. `v6 · dev` → `v7 · dev`).
-6. Commit and push — the Pages workflow deploys automatically. Verify the JS in `vN/` is byte-identical to the trunk (the trunk is the source of truth; the snapshot is a copy).
+2. Bump `sw.js` `CACHE` to the new tag (e.g. `"calc-v8"`).
+3. Bump root `index.html` `#version` badge to the new label (e.g. `v8`).
+4. Bump `dev.html` version label (e.g. `v7f · dev` → `v8 · dev`).
+5. Commit and push — the Pages workflow deploys automatically. That's the entire release: no snapshot dir, no gate flip, no per-version copy.
 
-### Patch releases (e.g. v6 → v6b, v7 → v7a) — DO NOT create a new snapshot dir
+### Patch releases (v8 → v8a) — same as a full release
 
-A **full version** (v6 → v7) creates a new `vN/` directory and flips the root gate to it. A **patch release** (v6 → **v6b**, v7 → **v7a**) ships a small fix to the *current* version **without** a new directory:
+There is no longer a distinction between "full" and "patch" releases at the directory level (there's only one directory). A **patch release** (v8 → **v8a**) is just another `CACHE` + badge bump:
 
-- **Root `index.html` gate stays at the current dir** — `url=v6/` and `location.replace('v6/')` are **unchanged**; do not flip to `v6b/`. The "current version" comment markers in the root gate stay `v6` (the *path* reflects the dir; only the CACHE name and the on-screen badge carry the letter).
-- **Patch the existing snapshot in place** — copy the trunk's changed files into `v6/` (e.g. `v6/styles.css`, `v6/sw.js`, `v6/js/*.js`, new `v6/icons/*`). `v6/index.html` keeps its structure; update it only if the DOM structure changed (new buttons, removed `data-placeholder`, etc.), keeping the SW-registration `<script>` (it registers `sw.js`).
-- **Bump the CACHE name AND the on-screen badge** — `calc-v6` → `calc-v6b` (in **both** trunk `sw.js` and `v6/sw.js`) to force installed clients to drop the old cache and refetch. **Also update `v6/index.html`'s `#version` badge** from `v6` to `v6b` so the *production page itself* shows the patch level — this lets you eyeball, on the live site, whether you're running the patched version or a stale cache (if the badge still says `v6`, the SW hasn't refetched yet).
-- **`dev.html` label** bumps to the patch letter (e.g. `v6 · dev` → `v6b · dev`) so the trunk preview shows the patch level.
-- Rule of thumb: **the letter is a cache-version tag, not a directory.** Only a digit bump (v7 → v8) makes a new directory and flips the gate.
+- `sw.js` `CACHE`: `"calc-v8"` → `"calc-v8a"` (forces installed clients to drop the old cache and refetch).
+- Root `index.html` `#version` badge: `v8` → `v8a` (so the live page shows the patch level — if the badge still said `v8`, the SW hasn't refetched yet).
+- `dev.html` label: `v8 · dev` → `v8a · dev`.
 
-### `vN/index.html` vs `dev.html` — service worker registration
+Rule of thumb: **the version tag is a cache-version string, not a directory.** Bump it for every release, full or patch.
 
-Both share the keypad + `#display` DOM, but differ in one block at the bottom:
-- **`vN/index.html`** registers the service worker (production = cached): `<script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js')); }</script>`
-- **`dev.html`** deliberately does **not** register the SW (trunk preview = always-fresh): a comment replaces that block.
+### `vN/` snapshot directories — frozen rollback backups only
 
-When patching a snapshot's `index.html` from the trunk, **re-add the SW-registration script** (don't copy dev.html's no-SW comment verbatim). When cutting a new full snapshot, seed `vN/index.html` from the prior `vN/index.html` (which already has the SW block), not from `dev.html`.
+`v5/`, `v6/`, `v7/` are **not** boot targets. They are frozen self-contained copies kept as rollback backups. **Never edit a released snapshot's content** — with two documented one-time exceptions, both on `v7/`, made so that pre-single-trunk home-screen installs (pinned to `/v7/`) migrate onto the root SW:
+- `v7/index.html` was rewritten to redirect to `../` (root).
+- `v7/sw.js`'s `CACHE` was bumped (`calc-v7f` → `calc-v7g`) — the frozen cache-first v7 SW would otherwise serve the old `index.html` forever, so the bumped cache forces installed v7 clients to refetch and hit the redirect.
+
+`v7/js/`, `v7/styles.css`, `v7/icons/` remain frozen.
+
+To **roll back** to a snapshot in an emergency: temporarily make root `index.html` redirect to `vN/` (restoring the old gate behavior for one recovery), fix forward, then remove the redirect.
+
+### `index.html` vs `dev.html` — service worker registration
+
+Both share the keypad + `#display` DOM, but differ in SW registration:
+- **`index.html`** (root, production = cached): registers the SW **via `js/update.js`** (called from `app.js`'s init). `update.js` skips registration when `<body data-dev>` is present.
+- **`dev.html`** (trunk preview = always-fresh): has `<body data-dev>` so `update.js` skips SW registration; every reload fetches the fresh working copy.
+
+When editing the trunk, do **not** add an inline SW-registration `<script>` to `index.html` — registration lives in `update.js`.
+
+**Subtle invariant:** `initUpdater()` captures `hadController` (`!!navigator.serviceWorker.controller`) synchronously at call time to guard the `controllerchange` reload (so first install doesn't reload the page). It MUST be called synchronously at `app.js` init (which it is) — wrapping it in `setTimeout`/`DOMContentLoaded` would capture a stale `hadController` and break the guard.
 
 ## Tests
 
