@@ -582,13 +582,18 @@
   });
 
   // ---- update.js controllerchange reload guard (pure decision) ----
-  // sw.js activate → self.clients.claim() → controller transitions null→new SW,
+  // sw.js activate → self.clients.claim() → controller transitions to the new SW,
   // which fires controllerchange on EVERY install including the first. The reload
-  // must be guarded to fire only on a genuine update (a controller existed before).
-  test('shouldReloadOnControllerChange: 首次安装(无前置 controller) → 不刷新', () => {
+  // must be gated on "did we actually see an update this session" (banner shown),
+  // NOT on a synchronously-captured hadController flag — because iOS Safari
+  // standalone sets navigator.serviceWorker.controller ASYNCHRONOUSLY, so a
+  // pre-capture hadController can be false even on a real update, wrongly
+  // suppressing the reload. The banner path (updatefound + hasController) is the
+  // authoritative "this is an update" signal; first install never shows the banner.
+  test('shouldReloadOnControllerChange: 未看到更新(首次安装) → 不刷新', () => {
     assertEqual(shouldReloadOnControllerChange(false), false);
   });
-  test('shouldReloadOnControllerChange: 更新(有前置 controller) → 刷新', () => {
+  test('shouldReloadOnControllerChange: 看到更新(banner 显示过) → 刷新', () => {
     assertEqual(shouldReloadOnControllerChange(true), true);
   });
 

@@ -10,13 +10,16 @@ export function shouldShowBanner(workerState, hasController) {
   return workerState === 'installed' && hasController === true;
 }
 
-// Pure: should controllerchange trigger a reload? Only on a genuine update
-// (a controller existed BEFORE the new SW took over), never on first install.
-// sw.js's activate → self.clients.claim() transitions controller null→new SW
-// on every install including the first, which fires controllerchange — so the
-// reload must be guarded by the captured pre-registration controller state.
-export function shouldReloadOnControllerChange(hadController) {
-  return hadController === true;
+// Pure: should controllerchange trigger a reload? Only when we actually saw an
+// update this session (the banner path fired). We do NOT gate on a synchronously
+// captured hadController flag because iOS Safari standalone sets
+// navigator.serviceWorker.controller ASYNCHRONOUSLY — a pre-capture hadController
+// can be false even on a real update, wrongly suppressing the reload (the
+// tap-Update-does-nothing bug). The banner path (updatefound + a controller
+// exists at THAT moment) is the authoritative "this is an update" signal; first
+// install never shows the banner, so sawUpdate stays false on cold install.
+export function shouldReloadOnControllerChange(sawUpdate) {
+  return sawUpdate === true;
 }
 
 // Re-fill the banner text IF the banner is currently visible. Safe no-op if
@@ -41,10 +44,12 @@ export function initUpdater() {
   const banner = document.getElementById('update-banner');
   if (!banner) return;
   const actionEl = banner.querySelector('[data-update-action]');
-  // Capture BEFORE registering: was a prior SW controlling this page? On first
-  // install this is false; on a genuine update it is true. Guards the
-  // controllerchange reload below so cold installs don't reload the page.
-  const hadController = !!navigator.serviceWorker.controller;
+  // sawUpdate: did the banner path fire this session (updatefound + a controller
+  // existed)? This is the authoritative "this is an update, not a first install"
+  // signal. Set true when we show the banner; gates the controllerchange reload.
+  // NOT a synchronous navigator.serviceWorker.controller snapshot — iOS Safari
+  // standalone sets controller async, so such a snapshot is unreliable.
+  let sawUpdate = false;
 
   navigator.serviceWorker.register('sw.js').then((reg) => {
     reg.addEventListener('updatefound', () => {
@@ -55,6 +60,7 @@ export function initUpdater() {
           // Show first, then fill — refreshUpdateBanner no-ops while hidden.
           banner.hidden = false;
           refreshUpdateBanner();
+          sawUpdate = true;   // mark that a real update was seen this session
         }
       });
     });
@@ -75,9 +81,11 @@ export function initUpdater() {
     });
   }
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    // First install: controller went null→new SW via clients.claim(), firing
-    // controllerchange — DON'T reload. Genuine update: prior SW was controlling
-    // (hadController captured pre-registration) → reload to pick up the new SW.
-    if (shouldReloadOnControllerChange(hadController)) window.location.reload();
+    // First install: no banner was ever shown (shouldShowBanner needs a controller
+    // at updatefound time, which a cold install lacks) → sawUpdate false → no reload.
+    // Genuine update: banner path set sawUpdate true → reload to pick up the new SW.
+    // Gating on sawUpdate (not a synchronous controller snapshot) keeps this correct
+    // on iOS Safari standalone, where controller is set asynchronously.
+    if (shouldReloadOnControllerChange(sawUpdate)) window.location.reload();
   });
 }
