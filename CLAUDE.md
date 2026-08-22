@@ -77,7 +77,13 @@ Casio REPLAY-style traversal in `recallUp()`/`recallDown()` (`app.js`):
 
 The repo is served **from the trunk root**: `index.html` is the real app shell, `sw.js` is the one and only service worker (scoped to the repo root), and `dev.html` is the no-SW trunk preview. There is **no version-gate redirect** and **no per-version snapshot directory** that users boot from.
 
-Installed (Add-to-Home-Screen) PWAs **actively discover new versions**: the browser re-fetches `sw.js` (bypassing HTTP cache for the SW script) on navigation and ~every 24h; when the bytes differ (because the `CACHE` string changed), a new SW installs in the **waiting** state; `js/update.js` detects it via `updatefound`/`statechange`, shows a yellow `#update-banner`, and on tap sends `{type:'SKIP_WAITING'}` → the waiting SW activates → `controllerchange` → `location.reload()` → fresh assets from the new cache. iOS survival: `visibilitychange` + hourly `registration.update()` (iOS suspends installed PWAs).
+Installed (Add-to-Home-Screen) PWAs **actively discover new versions**: the browser re-fetches `sw.js` (bypassing HTTP cache for the SW script) on navigation and ~every 24h; when the bytes differ (because the `CACHE` string changed), a new SW installs in the **waiting** state; `js/update.js` detects it via `updatefound`/`statechange`, shows a yellow `#update-banner`, and on tap sends `{type:'SKIP_WAITING'}` → the waiting SW `skipWaiting()`s → activates → deletes the old `CACHE` + `clients.claim()` → reload → fresh assets from the new cache. iOS survival: `visibilitychange` + hourly `registration.update()` (iOS suspends installed PWAs).
+
+The reload is gated by a **dual signal** in `update.js`'s tap-Update handler, taking whichever fires first:
+- Watch the **stable `newWorker` reference** (captured at `updatefound` as `reg.installing`, the same object through `installing`→`installed`→`activating`→`activated`) for `state === 'activated'`. `'activated'` only fires AFTER `activate`'s `e.waitUntil` resolves (cache swap done), so the reload fetch hits the new cache — NOT the half-swapped one.
+- A **`controllerchange` backstop with a 500ms delay**, because iOS Safari standalone can drop the waiting worker's `statechange` listener across the install→activate transition. `controllerchange` still fires when the new SW `clients.claim()`s; the delay lets `activate`'s cache cleanup finish before the reload fetch.
+
+This `sawUpdate` flag (set when the banner shows) gates the reload — first install never shows the banner → no reload. Do NOT revert to gating on a synchronously-captured `navigator.serviceWorker.controller` snapshot: iOS Safari standalone sets `controller` **asynchronously**, so that snapshot is `false` even on a real update and wrongly suppresses the reload (the original "tap Update does nothing" bug).
 
 ### The single source of truth = `sw.js` `CACHE`
 
@@ -119,7 +125,7 @@ Both share the keypad + `#display` DOM, but differ in SW registration:
 
 When editing the trunk, do **not** add an inline SW-registration `<script>` to `index.html` — registration lives in `update.js`.
 
-**Subtle invariant:** `initUpdater()` captures `hadController` (`!!navigator.serviceWorker.controller`) synchronously at call time to guard the `controllerchange` reload (so first install doesn't reload the page). It MUST be called synchronously at `app.js` init (which it is) — wrapping it in `setTimeout`/`DOMContentLoaded` would capture a stale `hadController` and break the guard.
+**Subtle invariants:** (1) `initUpdater()` is called synchronously at `app.js` init (not wrapped in `setTimeout`/`DOMContentLoaded`) so its registration + listeners attach early. (2) The post-update reload gates on `sawUpdate` (banner shown this session), NOT a synchronously-captured `navigator.serviceWorker.controller` flag — iOS Safari standalone sets `controller` asynchronously, so a startup snapshot would mis-read `false` on a real update and suppress the reload. (3) The tap-Update handler watches a **stable `newWorker` reference** captured at `updatefound` (not `reg.waiting` re-fetched at click time, which can be a different object and lose the listener) and has a `controllerchange`+500ms backstop for iOS where that listener is dropped. These three are load-bearing — changing them reintroduces the "tap Update shows the old version" bug.
 
 ## Tests
 
