@@ -50,13 +50,17 @@ export function initUpdater() {
   // NOT a synchronous navigator.serviceWorker.controller snapshot — iOS Safari
   // standalone sets controller async, so such a snapshot is unreliable.
   let sawUpdate = false;
+  // newWorker: the worker from updatefound, captured as a stable reference so the
+  // click handler can watch ITS statechange to 'activated'. reg.waiting at click
+  // time can be a different object on some engines, losing the listener.
+  let newWorker = null;
 
   navigator.serviceWorker.register('sw.js').then((reg) => {
     reg.addEventListener('updatefound', () => {
-      const nw = reg.installing;
-      if (!nw) return;
-      nw.addEventListener('statechange', () => {
-        if (shouldShowBanner(nw.state, !!navigator.serviceWorker.controller)) {
+      newWorker = reg.installing;   // stable ref through installing→installed→waiting
+      if (!newWorker) return;
+      newWorker.addEventListener('statechange', () => {
+        if (shouldShowBanner(newWorker.state, !!navigator.serviceWorker.controller)) {
           // Show first, then fill — refreshUpdateBanner no-ops while hidden.
           banner.hidden = false;
           refreshUpdateBanner();
@@ -72,25 +76,36 @@ export function initUpdater() {
     setInterval(check, 60 * 60 * 1000);
   }).catch(() => { /* SW registration failed — fail silently, app still works uncached */ });
 
-  // User taps Update → post SKIP_WAITING to the waiting SW, then reload ONLY after
-  // the new SW reaches the 'activated' state (which happens only AFTER activate's
-  // e.waitUntil cache-cleanup + clients.claim fully resolve). Reloing on
-  // 'controllerchange' instead is a race: that event can fire mid-activation,
-  // loading a half-swapped cache (the "version still shows the old tag" bug).
+  // Reload after the new SW activates. Two signals, whichever fires first once
+  // activated — defensive because some engines (notably iOS Safari standalone)
+  // drop statechange listeners on the waiting worker across the install→activate
+  // transition, so we also listen on controllerchange with a short delay to let
+  // activate's cache cleanup finish before the reload fetch.
+  let reloaded = false;
+  const reloadIfUpdate = () => {
+    if (reloaded || !shouldReloadAfterUpdate(sawUpdate)) return;
+    reloaded = true;
+    window.location.reload();
+  };
+
+  // User taps Update → post SKIP_WAITING, then reload once the new SW activates.
   if (actionEl) {
     actionEl.addEventListener('click', () => {
       navigator.serviceWorker.getRegistration().then((reg) => {
-        const waiting = reg && reg.waiting;
+        const waiting = (newWorker && newWorker.state !== 'activated') ? newWorker : (reg && reg.waiting);
         if (!waiting) return;
-        // Reload once the new SW is fully activated (cache swap done).
-        // First install never gets here (no banner → no click → sawUpdate false).
         waiting.addEventListener('statechange', () => {
-          if (waiting.state === 'activated' && shouldReloadAfterUpdate(sawUpdate)) {
-            window.location.reload();
-          }
+          if (waiting.state === 'activated') reloadIfUpdate();
         });
         waiting.postMessage({ type: 'SKIP_WAITING' });
       });
     });
   }
+  // Backstop: if the waiting worker's statechange to 'activated' is lost (iOS),
+  // controllerchange still fires once the new SW claims clients. Delay slightly
+  // so activate's cache cleanup (caches.delete old + new cache ready) resolves
+  // before the reload fetch — otherwise the reload loads a half-swapped cache.
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    setTimeout(reloadIfUpdate, 500);
+  });
 }
