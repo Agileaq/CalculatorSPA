@@ -7,7 +7,7 @@ import { ACTIONS, SHIFT_ACTIONS, KEYBOARD } from './keymap.js';
 import { MATH_CATALOG } from './mathmenu.js';
 import { buildTape } from './tape.js';
 import { t, cycleLocale, getLocaleMeta } from './i18n.js';
-import { initUpdater } from './update.js';
+import { initUpdater, refreshUpdateBanner } from './update.js';
 
 const editor = new Editor();
 const state = new AppState();
@@ -214,6 +214,8 @@ function applyLocale() {
   if (mathTitleEl) mathTitleEl.textContent = t('mathTitle');
   const html = document.documentElement;
   html.lang = meta.code; html.dir = meta.dir;
+  // Re-localize the update banner if it's currently visible (spec §4.7).
+  refreshUpdateBanner();
 }
 
 // History recall: ∧ older, ∨ newer. null = not replaying.

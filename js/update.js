@@ -19,6 +19,20 @@ export function shouldReloadOnControllerChange(hadController) {
   return hadController === true;
 }
 
+// Re-fill the banner text IF the banner is currently visible. Safe no-op if
+// the banner element is missing or hidden. Called from initUpdater's
+// updatefound handler (after unhiding the banner) AND from applyLocale on
+// locale switch, so a visible banner re-localizes when the user changes
+// language (spec §4.7).
+export function refreshUpdateBanner() {
+  const banner = document.getElementById('update-banner');
+  if (!banner || banner.hidden) return;
+  const textEl = banner.querySelector('[data-update-text]');
+  const actionEl = banner.querySelector('[data-update-action]');
+  if (textEl) textEl.textContent = t('update.available');
+  if (actionEl) actionEl.textContent = t('update.reload');
+}
+
 // Side-effecting: wire the whole update UX. Safe no-op if SW unsupported,
 // dev preview (body[data-dev]), or the banner element is missing.
 export function initUpdater() {
@@ -26,17 +40,11 @@ export function initUpdater() {
   if (document.body.hasAttribute('data-dev')) return;
   const banner = document.getElementById('update-banner');
   if (!banner) return;
-  const textEl = banner.querySelector('[data-update-text]');
   const actionEl = banner.querySelector('[data-update-action]');
   // Capture BEFORE registering: was a prior SW controlling this page? On first
   // install this is false; on a genuine update it is true. Guards the
   // controllerchange reload below so cold installs don't reload the page.
   const hadController = !!navigator.serviceWorker.controller;
-
-  function fillBanner() {
-    if (textEl) textEl.textContent = t('update.available');
-    if (actionEl) actionEl.textContent = t('update.reload');
-  }
 
   navigator.serviceWorker.register('sw.js').then((reg) => {
     reg.addEventListener('updatefound', () => {
@@ -44,8 +52,9 @@ export function initUpdater() {
       if (!nw) return;
       nw.addEventListener('statechange', () => {
         if (shouldShowBanner(nw.state, !!navigator.serviceWorker.controller)) {
-          fillBanner();
+          // Show first, then fill — refreshUpdateBanner no-ops while hidden.
           banner.hidden = false;
+          refreshUpdateBanner();
         }
       });
     });
