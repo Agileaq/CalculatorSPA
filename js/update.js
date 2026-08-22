@@ -10,7 +10,7 @@ export function shouldShowBanner(workerState, hasController) {
   return workerState === 'installed' && hasController === true;
 }
 
-// Pure: should controllerchange trigger a reload? Only when we actually saw an
+// Pure: should we reload after the new SW activates? Only when we actually saw an
 // update this session (the banner path fired). We do NOT gate on a synchronously
 // captured hadController flag because iOS Safari standalone sets
 // navigator.serviceWorker.controller ASYNCHRONOUSLY — a pre-capture hadController
@@ -18,7 +18,7 @@ export function shouldShowBanner(workerState, hasController) {
 // tap-Update-does-nothing bug). The banner path (updatefound + a controller
 // exists at THAT moment) is the authoritative "this is an update" signal; first
 // install never shows the banner, so sawUpdate stays false on cold install.
-export function shouldReloadOnControllerChange(sawUpdate) {
+export function shouldReloadAfterUpdate(sawUpdate) {
   return sawUpdate === true;
 }
 
@@ -46,7 +46,7 @@ export function initUpdater() {
   const actionEl = banner.querySelector('[data-update-action]');
   // sawUpdate: did the banner path fire this session (updatefound + a controller
   // existed)? This is the authoritative "this is an update, not a first install"
-  // signal. Set true when we show the banner; gates the controllerchange reload.
+  // signal. Set true when we show the banner; gates the post-activation reload.
   // NOT a synchronous navigator.serviceWorker.controller snapshot — iOS Safari
   // standalone sets controller async, so such a snapshot is unreliable.
   let sawUpdate = false;
@@ -72,20 +72,25 @@ export function initUpdater() {
     setInterval(check, 60 * 60 * 1000);
   }).catch(() => { /* SW registration failed — fail silently, app still works uncached */ });
 
-  // User taps Update → tell the waiting SW to take over → controllerchange → reload.
+  // User taps Update → post SKIP_WAITING to the waiting SW, then reload ONLY after
+  // the new SW reaches the 'activated' state (which happens only AFTER activate's
+  // e.waitUntil cache-cleanup + clients.claim fully resolve). Reloing on
+  // 'controllerchange' instead is a race: that event can fire mid-activation,
+  // loading a half-swapped cache (the "version still shows the old tag" bug).
   if (actionEl) {
     actionEl.addEventListener('click', () => {
       navigator.serviceWorker.getRegistration().then((reg) => {
-        if (reg && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        const waiting = reg && reg.waiting;
+        if (!waiting) return;
+        // Reload once the new SW is fully activated (cache swap done).
+        // First install never gets here (no banner → no click → sawUpdate false).
+        waiting.addEventListener('statechange', () => {
+          if (waiting.state === 'activated' && shouldReloadAfterUpdate(sawUpdate)) {
+            window.location.reload();
+          }
+        });
+        waiting.postMessage({ type: 'SKIP_WAITING' });
       });
     });
   }
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    // First install: no banner was ever shown (shouldShowBanner needs a controller
-    // at updatefound time, which a cold install lacks) → sawUpdate false → no reload.
-    // Genuine update: banner path set sawUpdate true → reload to pick up the new SW.
-    // Gating on sawUpdate (not a synchronous controller snapshot) keeps this correct
-    // on iOS Safari standalone, where controller is set asynchronously.
-    if (shouldReloadOnControllerChange(sawUpdate)) window.location.reload();
-  });
 }
