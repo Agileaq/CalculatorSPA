@@ -26,7 +26,7 @@
   <!--
     DEV preview page: references the root js/ (working copy), live edits reload fresh.
     For local preview: localhost:8000/dev.html
-    The live production entry is the root / (auto-redirects to the current version snapshot vN/).
+    The root index.html IS the production app (single trunk); this dev.html is the no-SW trunk preview.
   -->
   <div id="calc">
     <header id="statusbar">
@@ -108,7 +108,9 @@
 
   <script type="module" src="js/app.js"></script>
   <script>
-    // dev preview does not register the service worker, so every reload fetches the fresh working copy.
+    // dev preview does not register the service worker: the <body data-dev>
+    // attribute is the gate js/update.js checks to skip SW registration, so
+    // every reload fetches the fresh working copy from the trunk js/.
   </script>
 </body>
 </html>
