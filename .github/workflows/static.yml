@@ -79,9 +79,17 @@ jobs:
       - name: Inspect uploaded artifact (diag)
         run: |
           echo "--- artifact.tar ./sw.js CACHE line ---"
-          tar -xzf "$RUNNER_TEMP/artifact.tar" -O ./sw.js 2>/dev/null | grep '^const CACHE' || echo "sw.js not in artifact at ./sw.js"
+          ART_CACHE=$(tar -xzf "$RUNNER_TEMP/artifact.tar" -O ./sw.js 2>/dev/null | grep '^const CACHE' || true)
+          echo "$ART_CACHE"
           echo "--- does artifact contain __diag.txt? ---"
           tar -tzf "$RUNNER_TEMP/artifact.tar" 2>/dev/null | grep -E '__diag' || echo "(no __diag in artifact)"
+          # Decision gate: if the artifact's sw.js is the BARE (un-stamped) CACHE,
+          # the stamp edit was lost between workspace and artifact. Fail loudly.
+          if ! echo "$ART_CACHE" | grep -q -- "-${GITHUB_SHA::7}\";$"; then
+            echo "ARTIFACT HAS UN-STAMPED sw.js (workspace was stamped per __diag.txt). Stamp edit lost on the way to the artifact."
+            exit 1
+          fi
+          echo "ARTIFACT sw.js correctly stamped."
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
