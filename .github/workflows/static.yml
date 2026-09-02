@@ -61,10 +61,16 @@ jobs:
       - name: Verify workspace sw.js right before upload (diag)
         run: |
           echo "pwd=$(pwd)"
-          echo "--- workspace sw.js (what stamp left) ---"
-          grep '^const CACHE' sw.js
-          echo "--- find all sw.js under workspace ---"
-          find . -name sw.js -not -path './.git/*' -exec grep -H '^const CACHE' {} \;
+          {
+            echo "WORKSPACE_GIT_SHA=${GITHUB_SHA::7}"
+            echo "--- workspace ./sw.js CACHE line ---"
+            grep '^const CACHE' sw.js
+            echo "--- all sw.js under workspace (excl .git) ---"
+            find . -name sw.js -not -path './.git/*' -exec grep -H '^const CACHE' {} \;
+            echo "--- ls sw.js ---"
+            ls -la sw.js
+          } > __diag.txt
+          cat __diag.txt
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -72,10 +78,10 @@ jobs:
           path: '.'
       - name: Inspect uploaded artifact (diag)
         run: |
-          echo "--- artifact.tar sw.js entry ---"
+          echo "--- artifact.tar ./sw.js CACHE line ---"
           tar -xzf "$RUNNER_TEMP/artifact.tar" -O ./sw.js 2>/dev/null | grep '^const CACHE' || echo "sw.js not in artifact at ./sw.js"
-          echo "--- artifact tar listing (sw.js / index.html) ---"
-          tar -tzf "$RUNNER_TEMP/artifact.tar" 2>/dev/null | grep -E '(^|/)(sw\.js|index\.html)$' | head
+          echo "--- does artifact contain __diag.txt? ---"
+          tar -tzf "$RUNNER_TEMP/artifact.tar" 2>/dev/null | grep -E '__diag' || echo "(no __diag in artifact)"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
