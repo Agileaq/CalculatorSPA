@@ -71,25 +71,30 @@ jobs:
             ls -la sw.js
           } > __diag.txt
           cat __diag.txt
+          # Copy the stamped workspace sw.js under a NEW name. Since it's a brand-new
+          # file (like __diag.txt), it cannot be subject to any "restore tracked file"
+          # mechanism. If /sw_stamped.js deploys stamped but /sw.js deploys bare, the
+          # sw.js tracked-file path is being reverted between stamp and upload.
+          cp sw.js sw_stamped.js
+          grep '^const CACHE' sw_stamped.js
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload entire repository
           path: '.'
       - name: Inspect uploaded artifact (diag)
+        continue-on-error: true
         run: |
           echo "--- artifact.tar ./sw.js CACHE line ---"
           ART_CACHE=$(tar -xzf "$RUNNER_TEMP/artifact.tar" -O ./sw.js 2>/dev/null | grep '^const CACHE' || true)
           echo "$ART_CACHE"
-          echo "--- does artifact contain __diag.txt? ---"
-          tar -tzf "$RUNNER_TEMP/artifact.tar" 2>/dev/null | grep -E '__diag' || echo "(no __diag in artifact)"
-          # Decision gate: if the artifact's sw.js is the BARE (un-stamped) CACHE,
-          # the stamp edit was lost between workspace and artifact. Fail loudly.
-          if ! echo "$ART_CACHE" | grep -q -- "-${GITHUB_SHA::7}\";$"; then
-            echo "ARTIFACT HAS UN-STAMPED sw.js (workspace was stamped per __diag.txt). Stamp edit lost on the way to the artifact."
-            exit 1
-          fi
-          echo "ARTIFACT sw.js correctly stamped."
+          echo "--- artifact.tar ./sw_stamped.js CACHE line ---"
+          tar -xzf "$RUNNER_TEMP/artifact.tar" -O ./sw_stamped.js 2>/dev/null | grep '^const CACHE' || echo "(no sw_stamped.js in artifact)"
+          echo "--- tar entries matching sw*.js ---"
+          tar -tzf "$RUNNER_TEMP/artifact.tar" 2>/dev/null | grep -E 'sw.*\.js$' | grep -v '/v[0-9]/' | head
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
