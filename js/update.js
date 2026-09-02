@@ -22,6 +22,18 @@ export function shouldReloadAfterUpdate(sawUpdate) {
   return sawUpdate === true;
 }
 
+// Pure: on page load, is there ALREADY a waiting worker that warrants showing
+// the banner? updatefound only fires when a NEW worker begins installing during
+// THIS page session. A worker that finished installing in a prior session
+// (e.g. while the PWA was backgrounded, or installed then the user refreshed
+// without tapping Update) sits in reg.waiting but never re-fires updatefound —
+// so without this check the banner never (re)appears and the user is stranded
+// on the old version. Treat a present waiting worker + an existing controller
+// (i.e. NOT a first install) as "an update is ready right now".
+export function shouldShowBannerForWaiting(waiting, hasController) {
+  return !!waiting && hasController === true;
+}
+
 // Re-fill the banner text IF the banner is currently visible. Safe no-op if
 // the banner element is missing or hidden. Called from initUpdater's
 // updatefound handler (after unhiding the banner) AND from applyLocale on
@@ -55,16 +67,31 @@ export function initUpdater() {
   // time can be a different object on some engines, losing the listener.
   let newWorker = null;
 
+  // Show the banner + mark an update was seen. Shared by the live-updatefound
+  // path AND the waiting-on-load path below so they can't diverge.
+  const showBanner = () => {
+    banner.hidden = false;
+    refreshUpdateBanner();
+    sawUpdate = true;
+  };
+
   navigator.serviceWorker.register('sw.js').then((reg) => {
+    // Waiting-on-load: a worker may have finished installing in a PRIOR session
+    // (while backgrounded, or the user refreshed without tapping Update). It sits
+    // in reg.waiting and does NOT re-fire updatefound, so without this check the
+    // banner never (re)appears and the user is stranded on the old version. This
+    // fixes "refresh after banner → still old, banner gone, can't update".
+    if (shouldShowBannerForWaiting(reg.waiting, !!navigator.serviceWorker.controller)) {
+      newWorker = reg.waiting;   // capture stable ref for the click handler
+      showBanner();
+    }
+
     reg.addEventListener('updatefound', () => {
       newWorker = reg.installing;   // stable ref through installing→installed→waiting
       if (!newWorker) return;
       newWorker.addEventListener('statechange', () => {
         if (shouldShowBanner(newWorker.state, !!navigator.serviceWorker.controller)) {
-          // Show first, then fill — refreshUpdateBanner no-ops while hidden.
-          banner.hidden = false;
-          refreshUpdateBanner();
-          sawUpdate = true;   // mark that a real update was seen this session
+          showBanner();
         }
       });
     });

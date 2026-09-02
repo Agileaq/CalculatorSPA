@@ -17,7 +17,7 @@
   import { MATH_CATALOG } from '../js/mathmenu.js';
   import { buildTape } from '../js/tape.js';
   import { LOCALES, getLocale, setLocale, cycleLocale, getLocaleMeta, t } from '../js/i18n.js';
-  import { shouldShowBanner, shouldReloadAfterUpdate } from '../js/update.js';
+  import { shouldShowBanner, shouldReloadAfterUpdate, shouldShowBannerForWaiting } from '../js/update.js';
 
   function memStorage() {
     const m = {};
@@ -765,6 +765,23 @@
   });
   test('shouldReloadAfterUpdate: 看到更新(banner 显示过) → 刷新', () => {
     assertEqual(shouldReloadAfterUpdate(true), true);
+  });
+
+  // ---- shouldShowBannerForWaiting: 加载时已有 waiting worker（刷新后/后台安装）----
+  // 修复 bug：updatefound 只在新 worker 安装时触发；刷新后已 waiting 的 worker
+  // 不再触发 updatefound，导致 banner 不再出现、用户困在旧版本无法更新。
+  // 解法：init 时若 reg.waiting 存在且有 controller，立即显 banner。
+  test('shouldShowBannerForWaiting: 有 waiting 且有 controller → true', () => {
+    assertEqual(shouldShowBannerForWaiting(true, true), true);
+  });
+  test('shouldShowBannerForWaiting: 无 waiting → false', () => {
+    assertEqual(shouldShowBannerForWaiting(false, true), false);
+    assertEqual(shouldShowBannerForWaiting(null, true), false);
+    assertEqual(shouldShowBannerForWaiting(undefined, true), false);
+  });
+  test('shouldShowBannerForWaiting: 有 waiting 但无 controller(首次安装) → false', () => {
+    // 首次安装没有旧 controller，不该把"首次安装的 waiting"误判为更新提示。
+    assertEqual(shouldShowBannerForWaiting(true, false), false);
   });
 
   runAll();
