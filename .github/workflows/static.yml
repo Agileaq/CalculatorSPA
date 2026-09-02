@@ -58,11 +58,24 @@ jobs:
           echo "STAMP OK"
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Verify workspace sw.js right before upload (diag)
+        run: |
+          echo "pwd=$(pwd)"
+          echo "--- workspace sw.js (what stamp left) ---"
+          grep '^const CACHE' sw.js
+          echo "--- find all sw.js under workspace ---"
+          find . -name sw.js -not -path './.git/*' -exec grep -H '^const CACHE' {} \;
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload entire repository
           path: '.'
+      - name: Inspect uploaded artifact (diag)
+        run: |
+          echo "--- artifact.tar sw.js entry ---"
+          tar -xzf "$RUNNER_TEMP/artifact.tar" -O ./sw.js 2>/dev/null | grep '^const CACHE' || echo "sw.js not in artifact at ./sw.js"
+          echo "--- artifact tar listing (sw.js / index.html) ---"
+          tar -tzf "$RUNNER_TEMP/artifact.tar" 2>/dev/null | grep -E '(^|/)(sw\.js|index\.html)$' | head
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
