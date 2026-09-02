@@ -427,6 +427,43 @@
     e.toggleSign();
     assertEqual(e.atoms.join(','), '2,-,(,-,(,3,+,5,),)');
   });
+  // ---- toggleSign 分支1 左开口语境: 操作数已在括号/函数参数内, 直接前置/剥离 -, 不包 (-x) ----
+  test('toggleSign 左开口: abs(5 → abs(-5 (直接前置 -, 不包 (-5))', () => {
+    const e = new Editor();
+    e.insertAtom('abs('); e.insertDigit('5'); // [abs(, 5]
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), 'abs(,-,5');
+  });
+  test('toggleSign 左开口: abs(-5 → abs(5 (再次点击剥离 -)', () => {
+    const e = new Editor();
+    e.insertAtom('abs('); e.insertAtom('-'); e.insertDigit('5'); // [abs(, -, 5]
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), 'abs(,5');
+  });
+  test('toggleSign 左开口: sin(3 → sin(-3', () => {
+    const e = new Editor();
+    e.insertAtom('sin('); e.insertDigit('3'); // [sin(, 3]
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), 'sin(,-,3');
+  });
+  test('toggleSign 左开口: (5 → (-5', () => {
+    const e = new Editor();
+    e.insertAtom('('); e.insertDigit('5'); // [(, 5]
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), '(,-,5');
+  });
+  test('toggleSign 左开口: (5 再次 → (5 (剥离)', () => {
+    const e = new Editor();
+    e.insertAtom('('); e.insertAtom('-'); e.insertDigit('5'); // [(, -, 5]
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), '(,5');
+  });
+  test('toggleSign 左开口 + 普通二元混合: 2+abs(3 → 2+abs(-3', () => {
+    const e = new Editor();
+    e.insertDigit('2'); e.insertAtom('+'); e.insertAtom('abs('); e.insertDigit('3'); // [2, +, abs(, 3]
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), '2,+,abs(,-,3');
+  });
   test('toggleSign 分支3: 空输入 → 插入 (-0)，光标在 0 与 ) 之间', () => {
     const e = new Editor();
     e.toggleSign();

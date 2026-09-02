@@ -3,6 +3,9 @@ const isNumAtom = (s) => /^\d*\.?\d*$/.test(s) && s !== '';
 // toggleSign 分支1 的操作数判定：数字、变量(A-Z)、常量(pi/e)、Ans。
 const OPERAND_CONST = new Set(['pi', 'e', 'Ans']);
 const isOperandAtom = (s) => isNumAtom(s) || OPERAND_CONST.has(s) || /^[A-Z]$/.test(s);
+// 左开口原子: 以 ( 结尾 —— 函数左括号 (abs(, sin(, ...) 或裸左括号 (。
+// toggleSign 用它判断操作数是否已在括号/函数参数内, 此时直接前置/剥离 - 而非包 (-x)。
+const isOpenAtom = (s) => typeof s === 'string' && s.endsWith('(');
 
 // Cursor model: (cursor, offset).
 //  cursor = atom index ∈ [0, atoms.length]; insert point sits before atoms[cursor].
@@ -175,6 +178,26 @@ export class Editor {
     } else if (this._cursor > 0) {
       const left = this._atoms[this._cursor - 1];
       if (isOperandAtom(left)) targetIdx = this._cursor - 1;
+    }
+    // --- 分支1左开口: 操作数已在括号/函数参数内 (左侧紧邻以 ( 结尾的原子) ---
+    // 此时无需再包 (-x), 直接前置/剥离一元 -。例: abs(5 → abs(-5；abs(-5 → abs(5。
+    // 注意: 须排除 (-t) 包裹形态 (左侧 ( 后跟 - 且 t 后跟 )) —— 那种归下面的
+    // (,-,t,) 剥离分支处理, 此处用 atoms[targetIdx+1] !== ')' 区分 (abs(-5 无尾 ) 而 (-5) 有)。
+    if (targetIdx >= 0 && targetIdx > 0 && isOpenAtom(this._atoms[targetIdx - 1])
+        && this._atoms[targetIdx + 1] !== ')') {
+      this._snapshot();
+      this._atoms.splice(targetIdx, 0, '-');           // 在操作数前插一元 -
+      this._cursor++;
+      return;
+    }
+    if (targetIdx >= 0 && targetIdx >= 2 && this._atoms[targetIdx - 1] === '-'
+        && isOpenAtom(this._atoms[targetIdx - 2])
+        && this._atoms[targetIdx + 1] !== ')') {
+      // 左开口 + 已有 - 且非 (-t) 包裹: 剥离 -。例 abs(-5 → abs(5
+      this._snapshot();
+      this._atoms.splice(targetIdx - 1, 1);            // 删 - 在操作数前
+      this._cursor--;
+      return;
     }
     if (targetIdx >= 0) {
       const t = this._atoms[targetIdx];
