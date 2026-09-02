@@ -39,13 +39,23 @@ jobs:
         # releases; the SHA is the per-commit cache key that prompts installed PWAs.
         run: |
           SHA="${GITHUB_SHA::7}"
+          echo "GITHUB_SHA=${GITHUB_SHA}"
+          echo "short SHA=${SHA}"
           perl -i -pe "s/const CACHE = \"calc-([a-z0-9]+)\";/const CACHE = \"calc-\$1-${SHA}\";/" sw.js
           perl -i -pe "s|(<div id=\"version\">v[0-9a-z]+)(</div>)|\$1 · ${SHA}\$2|" index.html
           perl -i -pe "s|(<div id=\"version\">v[0-9a-z]+) · dev(</div>)|\$1 · ${SHA} · dev\$2|" dev.html
           echo "Stamped commit ${SHA}:"
-          grep '^const CACHE' sw.js
-          grep 'id="version"' index.html
-          grep 'id="version"' dev.html
+          echo "--- sw.js ---"; grep '^const CACHE' sw.js
+          echo "--- index.html ---"; grep 'id="version"' index.html
+          echo "--- dev.html ---"; grep 'id="version"' dev.html
+          # Fail-fast: prove the stamp actually took. If sw.js does NOT contain the
+          # SHA suffix, the stamp silently failed and the deployed artifact would
+          # carry the un-stamped CACHE (so installed PWAs never see a byte-diff and
+          # never prompt). Exit non-zero so the run goes red and the root cause is
+          # visible in the step log instead of a misleading green check.
+          grep -q "^const CACHE = \"calc-[a-z0-9]*-${SHA}\";$" sw.js || { echo "STAMP FAILED: sw.js missing -${SHA}"; exit 1; }
+          grep -q "v[a-z0-9]* · ${SHA}" index.html || { echo "STAMP FAILED: index.html missing · ${SHA}"; exit 1; }
+          echo "STAMP OK"
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
