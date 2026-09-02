@@ -19,7 +19,7 @@ export function parse(tokens) {
   }
   function parseMulDiv() {
     let node = parseCombi();
-    while (peek() && peek().type === T.OP && (peek().value === '*' || peek().value === '/')) {
+    while (peek() && peek().type === T.OP && (peek().value === '*' || peek().value === '/' || peek().value === 'Mod')) {
       const op = next().value;
       node = { kind: 'binary', op, left: node, right: parseCombi() };
     }
@@ -48,7 +48,10 @@ export function parse(tokens) {
   }
   function parsePostfix() {
     let node = parsePrimary();
-    while (peek() && peek().type === T.PERCENT) { next(); node = { kind: 'percent', operand: node }; }
+    while (peek() && (peek().type === T.PERCENT || peek().type === T.FACT)) {
+      if (peek().type === T.PERCENT) { next(); node = { kind: 'percent', operand: node }; }
+      else { next(); node = { kind: 'fact', operand: node }; }
+    }
     return node;
   }
   function parsePrimary() {

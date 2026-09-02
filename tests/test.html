@@ -10,7 +10,7 @@
   import { parse } from '../js/parser.js';
   import { evaluate, CalcError } from '../js/evaluator.js';
   import { evaluate as engineEval } from '../js/engine.js';
-  import { Editor } from '../js/tokens.js';
+  import { Editor, autoCloseParens } from '../js/tokens.js';
   import { Store } from '../js/history.js';
   import { AppState } from '../js/state.js';
   import { ACTIONS, SHIFT_ACTIONS, KEYBOARD } from '../js/keymap.js';
@@ -76,6 +76,24 @@
     assertEqual(t[1].type, T.OP); assertEqual(t[1].value, 'nCr');
     assertEqual(t.length, 3); // 无隐式乘法插入
   });
+  test('lex Mod 为 OP', () => {
+    const t = lex(['5', 'Mod', '3']);
+    assertEqual(t[1].type, T.OP); assertEqual(t[1].value, 'Mod');
+    assertEqual(t.length, 3); // 无隐式乘法插入
+  });
+  test('lex ! 为 FACT（后缀）', () => {
+    const t = lex(['3', '!']);
+    assertEqual(t[0].type, T.NUM); assertEqual(t[1].type, T.FACT);
+  });
+  test('lex ! 后缀紧贴数字（无隐式乘法）', () => {
+    const t = lex(['5', '!']);
+    assertEqual(t.length, 2); // 5 ! → NUM FACT，不插隐式 *
+  });
+  test('lex ! 左闭集合：可接在 ) 后', () => {
+    const t = lex(['(', '2', '+', '3', ')', '!']);
+    assertEqual(t[t.length - 1].type, T.FACT);
+    assertEqual(t[t.length - 2].type, T.RPAREN);
+  });
 
   const ast = (atoms) => parse(lex(atoms));
 
@@ -111,6 +129,37 @@
     const a = ast(['5', 'nCr', '2', '*', '3']); // (5 nCr 2) * 3
     assertEqual(a.op, '*'); assertEqual(a.left.op, 'nCr');
   });
+  test('parse Mod 二元节点（与 ×÷ 同层）', () => {
+    const a = ast(['5', 'Mod', '3']);
+    assertEqual(a.kind, 'binary'); assertEqual(a.op, 'Mod');
+    assertEqual(a.left.value, 5); assertEqual(a.right.value, 3);
+  });
+  test('parse Mod 与 ×÷ 同层、左结合', () => {
+    // 10 Mod 7 Mod 4 → (10 Mod 7) Mod 4 = 3 Mod 4 = 3
+    const a = ast(['10', 'Mod', '7', 'Mod', '4']);
+    assertEqual(a.op, 'Mod'); assertEqual(a.left.op, 'Mod');
+  });
+  test('parse Mod 紧于加减', () => {
+    // 2 + 5 Mod 3 → 2 + (5 Mod 3)
+    const a = ast(['2', '+', '5', 'Mod', '3']);
+    assertEqual(a.op, '+'); assertEqual(a.right.op, 'Mod');
+  });
+  test('parse ! 为后缀 fact 节点', () => {
+    const a = ast(['5', '!']);
+    assertEqual(a.kind, 'fact'); assertEqual(a.operand.value, 5);
+  });
+  test('parse ! 后缀先于 ^ 右结合（3!^2 → (3!)^2）', () => {
+    const a = ast(['3', '!', '^', '2']);
+    assertEqual(a.op, '^'); assertEqual(a.left.kind, 'fact');
+  });
+  test('parse ! 后缀先于 ^（2^3! → 2^(3!)）', () => {
+    const a = ast(['2', '^', '3', '!']);
+    assertEqual(a.op, '^'); assertEqual(a.right.kind, 'fact');
+  });
+  test('parse ! 可作用于括号块', () => {
+    const a = ast(['(', '2', '+', '3', ')', '!']);
+    assertEqual(a.kind, 'fact'); assertEqual(a.operand.kind, 'binary');
+  });
 
   const ev = (atoms, ctx = {}) =>
     evaluate(parse(lex(atoms)), { angleMode: 'DEG', ans: 0, vars: {}, ...ctx });
@@ -141,6 +190,26 @@
   test('eval nCr(2,5) Math Error', () => assertThrows(() => ev(['2', 'nCr', '5']), 'Math Error'));
   test('eval nCr(5,-1) Math Error', () => assertThrows(() => ev(['5', 'nCr', '-', '1']), 'Math Error'));
   test('eval nCr(5.5,2) Math Error', () => assertThrows(() => ev(['5.5', 'nCr', '2']), 'Math Error'));
+  test('eval Mod 5 Mod 3 = 2', () => assertEqual(ev(['5', 'Mod', '3']), 2));
+  test('eval Mod 左结合 (10 Mod 7) Mod 4 = 3', () => assertEqual(ev(['10', 'Mod', '7', 'Mod', '4']), 3));
+  test('eval Mod 与 ×÷ 同层：2 Mod 5 * 3 = (2 Mod 5)*3 = 6', () => assertEqual(ev(['2', 'Mod', '5', '*', '3']), 6));
+  test('eval Mod 紧于加减：2 + 5 Mod 3 = 4', () => assertEqual(ev(['2', '+', '5', 'Mod', '3']), 4));
+  test('eval Mod 负数 -7 Mod 3', () => assertEqual(ev(['-', '7', 'Mod', '3']), -7 % 3));
+  test('eval Mod 除零 Math Error', () => assertThrows(() => ev(['5', 'Mod', '0']), 'Math Error'));
+  test('eval fact 5! = 120', () => assertEqual(ev(['5', '!']), 120));
+  test('eval fact 0! = 1', () => assertEqual(ev(['0', '!']), 1));
+  test('eval fact 3!^2 = 36', () => assertEqual(ev(['3', '!', '^', '2']), 36));
+  test('eval fact 2^3! = 64', () => assertEqual(ev(['2', '^', '3', '!']), 64));
+  test('eval fact (2+3)! = 120', () => assertEqual(ev(['(', '2', '+', '3', ')', '!']), 120));
+  test('eval fact (-1) Math Error', () => assertThrows(() => ev(['(', '-', '1', ')', '!']), 'Math Error'));
+  test('eval fact 2.5! Math Error', () => assertThrows(() => ev(['2.5', '!']), 'Math Error'));
+  test('eval fact 170! 有限', () => {
+    const v = ev(['170', '!']);
+    assertEqual(typeof v, 'number');
+    assertEqual(Number.isFinite(v), true);
+    assertEqual(v > 1e306, true);
+  });
+  test('eval fact 171! Math Error（溢出上限）', () => assertThrows(() => ev(['171', '!']), 'Math Error'));
 
   const engineCtx = { angleMode: 'DEG', ans: 0, vars: {} };
   test('engine 成功返回 display', () => {
@@ -293,6 +362,97 @@
     e.insertAtoms([]);
     assertEqual(e.atoms.join(','), '5');
   });
+
+  // ---- autoCloseParens (纯函数：补齐缺失的右括号) ----
+  test('autoCloseParens 无缺失 → 不变', () => {
+    assertEqual(autoCloseParens(['2', '+', '3']).join(','), '2,+,3');
+  });
+  test('autoCloseParens 缺一个 ) → 补到末尾', () => {
+    assertEqual(autoCloseParens(['(', '2', '+', '3']).join(','), '(,2,+,3,)');
+  });
+  test('autoCloseParens 缺两个 )) → 补两个', () => {
+    assertEqual(autoCloseParens(['(', '(', '2', '+', '3']).join(','), '(,(,2,+,3,),)');
+  });
+  test('autoCloseParens 已平衡 → 不动', () => {
+    assertEqual(autoCloseParens(['(', '2', '+', '3', ')']).join(','), '(,2,+,3,)');
+  });
+
+  // ---- toggleSign (符号翻转：分支1 数字/变量, 分支2 括号块, 分支3 空/运算符) ----
+  test('toggleSign 分支1: 数字 → 包裹 (-x)', () => {
+    const e = new Editor();
+    e.insertDigit('3'); e.insertAtom('+'); e.insertDigit('5'); // [3, +, 5]
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), '3,+,(,-,5,)');
+  });
+  test('toggleSign 分支1: 再次点击 → 还原', () => {
+    const e = new Editor();
+    e.insertDigit('3'); e.insertAtom('+'); e.insertDigit('5');
+    e.toggleSign(); e.toggleSign();
+    assertEqual(e.atoms.join(','), '3,+,5');
+  });
+  test('toggleSign 分支1: 变量 X → (-X)', () => {
+    const e = new Editor();
+    e.insertAtom('X'); // [X]
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), '(,-,X,)');
+  });
+  test('toggleSign 分支1: 光标在数字内 → 翻转该数字', () => {
+    const e = new Editor();
+    e.insertDigit('1'); e.insertDigit('2'); e.insertDigit('3'); // [123], cursor(3,0)
+    e.setCursor(0, 1); // 在 1 和 2 之间
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), '(,-,123,)');
+  });
+  test('toggleSign 分支2: 闭括号前 → 包裹 (-(...))', () => {
+    const e = new Editor();
+    e.insertDigit('2'); e.insertAtom('*'); e.insertAtom('('); e.insertDigit('3'); e.insertAtom('+'); e.insertDigit('5'); e.insertAtom(')');
+    // [2, *, (, 3, +, 5, )] cursor 末尾(在 ) 后)
+    // 包裹 = 在 ( 前插入 (,-；在匹配的 ) 后追加 )  → 2 * (-(3+5))
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), '2,*,(,-,(,3,+,5,),)');
+  });
+  test('toggleSign 分支2: 已包裹 (-(...)) → 再次点击还原', () => {
+    const e = new Editor();
+    e.insertDigit('2'); e.insertAtom('*');
+    e.insertAtom('('); e.insertAtom('-'); e.insertAtom('('); e.insertDigit('3'); e.insertAtom('+'); e.insertDigit('5'); e.insertAtom(')'); e.insertAtom(')');
+    // [2, *, (, -, (, 3, +, 5, ), )] = 2 * (-(3+5)), cursor 末尾
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), '2,*,(,3,+,5,)');
+  });
+  test('toggleSign 分支2: 2-(3+5) → 2-(-(3+5)) (不产生裸双减号)', () => {
+    const e = new Editor();
+    e.insertDigit('2'); e.insertAtom('-'); e.insertAtom('('); e.insertDigit('3'); e.insertAtom('+'); e.insertDigit('5'); e.insertAtom(')');
+    // [2, -, (, 3, +, 5, )] cursor 末尾
+    // 包裹 = 在 ( 前插入 (,-；在 ) 后追加 ) → 2 - (-(3+5)) = 10
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), '2,-,(,-,(,3,+,5,),)');
+  });
+  test('toggleSign 分支3: 空输入 → 插入 (-0)，光标在 0 与 ) 之间', () => {
+    const e = new Editor();
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), '(,-,0,)');
+    assertEqual(e.cursor, 3); assertEqual(e.offset, 0); // 在 0 后、) 前
+  });
+  test('toggleSign 分支3: 运算符后 → 插入 (-0)', () => {
+    const e = new Editor();
+    e.insertDigit('3'); e.insertAtom('+'); // [3, +]
+    e.toggleSign();
+    assertEqual(e.atoms.join(','), '3,+,(,-,0,)');
+  });
+  test('toggleSign 分支3: 光标在起始(左侧空) → 插入 (-0) 前置', () => {
+    const e = new Editor();
+    e.insertDigit('3'); e.insertAtom('+'); e.insertDigit('5');
+    e.setCursor(0); // 光标在最前，左侧为空
+    e.toggleSign(); // 左侧空 → 分支3 插入 (-0)
+    assertEqual(e.atoms.join(','), '(,-,0,),3,+,5');
+  });
+  test('toggleSign undo 可回退', () => {
+    const e = new Editor();
+    e.insertDigit('5');
+    e.toggleSign(); // [ (, -, 5, ) ]
+    e.undo();
+    assertEqual(e.atoms.join(','), '5');
+  });
   test('点号数字内不重复', () => {
     const e = new Editor();
     e.insertDigit('3'); e.insertDigit('.'); e.insertDigit('4');                     // ["3.4"]
@@ -361,8 +521,19 @@
   test('函数作为原子', () => {
     assertEqual(ACTIONS.sin.payload, 'sin(');
   });
-  test('占位键', () => {
-    assertEqual(ACTIONS.fxs.kind, 'placeholder');
+  test('占位键已替换为实际功能', () => {
+    // 原 fxs/grp/comma/sto 占位键已重映射为 negate/abs/fact/mod
+    assertEqual(ACTIONS.fxs, undefined);
+    assertEqual(ACTIONS.grp, undefined);
+    assertEqual(ACTIONS.comma, undefined);
+    assertEqual(ACTIONS.sto, undefined);
+  });
+  test('新键 negate/abs/fact/mod 动作', () => {
+    assertEqual(ACTIONS.negate.kind, 'toggleSign');
+    assertEqual(ACTIONS.abs.payload, 'abs(');
+    assertEqual(ACTIONS.fact.payload, '!');
+    assertEqual(ACTIONS.mod.kind, 'atom');
+    assertEqual(ACTIONS.mod.payload, 'Mod');
   });
   test('mathUp/mathDown 非占位', () => {
     assertEqual(ACTIONS.mathUp.kind, 'historyUp');

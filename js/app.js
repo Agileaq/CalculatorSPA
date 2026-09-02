@@ -1,5 +1,5 @@
 // js/app.js
-import { Editor } from './tokens.js';
+import { Editor, autoCloseParens } from './tokens.js';
 import { AppState } from './state.js';
 import { Store } from './history.js';
 import { evaluate } from './engine.js';
@@ -30,7 +30,7 @@ const langEl = $('#lang'), historyTitleEl = $('#history-title'), mathTitleEl = $
 const DISPLAY = {
   '*': '×', '/': '÷', 'pi': 'π', 'sqrt(': '√(',
   'asin(': 'sin⁻¹(', 'acos(': 'cos⁻¹(', 'atan(': 'tan⁻¹(', 'cbrt(': '³√(',
-  'nCr': 'C', 'nPr': 'P',
+  'nCr': 'C', 'nPr': 'P', 'Mod': 'Mod', '!': '!',
 };
 const showAtom = (a) => DISPLAY[a] ?? a;
 
@@ -287,6 +287,9 @@ function openMath() {
 }
 
 function doEquals() {
+  // 容错：补齐缺失的右括号（如未闭合的 ( 或分支3 残留），避免低级 Syntax Error。
+  const closed = autoCloseParens(editor.atoms);
+  if (closed.length !== editor.atoms.length) editor.setAtoms(closed);
   const r = evaluate(editor.atoms, { angleMode: state.angleMode, ans: state.ans, vars: store.vars });
   if (r.ok) {
     state.ans = r.value; store.addHistory(editor.atoms, r.display);
@@ -308,8 +311,8 @@ function doSto() {
 }
 
 // Handles only "insert into editor" actions; caller calls render().
-// 空输入时这些二元运算符前面必须数字（+ − × ÷ ^ nCr nPr）。有 Ans 则自动补 Ans 续算。
-const PRECEDENCE_OPS = new Set(['+', '-', '*', '/', '^', 'nCr', 'nPr']);
+// 空输入时这些二元运算符前面必须数字（+ − × ÷ ^ nCr nPr Mod）。有 Ans 则自动补 Ans 续算。
+const PRECEDENCE_OPS = new Set(['+', '-', '*', '/', '^', 'nCr', 'nPr', 'Mod']);
 const hasAns = () => state.ans !== 0 || store.history.length > 0;
 
 function execAction(action) {
@@ -349,6 +352,7 @@ const INPUT_MUTATING = new Set([
   'digit', 'atom', 'func', 'ans',     // 插入
   'backspace', 'clear', 'undo', 'redo', 'equals', // 编辑/提交
   'left', 'right', 'historyUp', 'historyDown',   // 光标移动 / 回放(改输入)
+  'toggleSign',                        // +/- 符号翻转(改输入)
 ]);
 
 function dispatch(id) {
@@ -392,7 +396,7 @@ function dispatch(id) {
     case 'toggleShift': state.toggleShift(); updateShift(); return;
     case 'history': toggleTapeExpand(); return;
     case 'math': openMath(); return;
-    case 'sto': doSto(); return;
+    case 'toggleSign': editor.toggleSign(); state.resetRecall(); render(); scrollTapeToBottom(); break;
     case 'historyUp': recallUp(); updateShift(); render(); return;
     case 'historyDown': recallDown(); updateShift(); render(); return;
     case 'placeholder': showToast(t('unavailable')); return;

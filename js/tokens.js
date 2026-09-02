@@ -1,5 +1,8 @@
 // js/tokens.js
 const isNumAtom = (s) => /^\d*\.?\d*$/.test(s) && s !== '';
+// toggleSign 分支1 的操作数判定：数字、变量(A-Z)、常量(pi/e)、Ans。
+const OPERAND_CONST = new Set(['pi', 'e', 'Ans']);
+const isOperandAtom = (s) => isNumAtom(s) || OPERAND_CONST.has(s) || /^[A-Z]$/.test(s);
 
 // Cursor model: (cursor, offset).
 //  cursor = atom index ∈ [0, atoms.length]; insert point sits before atoms[cursor].
@@ -127,4 +130,89 @@ export class Editor {
     const s = this._redo.pop();
     this._atoms = s.atoms; this._cursor = s.cursor; this._offset = s.offset;
   }
+
+  // 符号翻转 ( +/- 键 )。基于光标左侧上下文分三支，统一用 (-x) 包裹/剥离，永不裸拼接 -。
+  //  1) 左侧是数字/变量/常量/Ans：包裹成 (-x)；若已是 (-x) 则剥离还原。
+  //  2) 左侧是 )：括号匹配，包裹整个块为 (-(...))；若已是 (-(...)) 则剥离还原。
+  //  3) 左侧是运算符或空(光标在最前)：插入 (-0)，光标落在 0 与 ) 之间（语法树时刻合法）。
+  toggleSign() {
+    // --- 分支2：光标紧邻 ) 之前（在某个 ) 后，且 ) 之前是合法表达式闭合）---
+    // 先检测"已包裹"形态 (-(...)) 以便剥离；否则做包裹。
+    if (this._offset === 0 && this._cursor > 0 && this._atoms[this._cursor - 1] === ')') {
+      // 堆栈向左平衡，找到匹配的 ( 的索引 i
+      let depth = 0, i = -1;
+      for (let k = this._cursor - 1; k >= 0; k--) {
+        const a = this._atoms[k];
+        if (a === ')') depth++;
+        else if (a === '(') { depth--; if (depth === 0) { i = k; break; } }
+      }
+      if (i >= 0) {
+        // 检测已包裹 (-(...))：外层 ( 在 i，其紧后是 -（即 atoms[i+1]==='-'），内部块为 (...)。
+        // 例：[2, *, (, -, (, 3, +, 5, ), )] 中匹配到外层 ( 在 i=2，atoms[3]==='-'。
+        if (i + 1 < this._atoms.length && this._atoms[i + 1] === '-') {
+          // 剥离外层 (,-,...,)：删 i 处的 ( 和 i+1 处的 -，再删末尾 )（在 _cursor-1，删两个后→_cursor-3）
+          this._snapshot();
+          this._atoms.splice(i, 2);                       // 删外层 ( 和 -
+          this._atoms.splice(this._cursor - 3, 1);        // 删外层 )
+          this._cursor -= 3;
+          return;
+        }
+        // 包裹为 (-(...))：在 i 处插入 (,-；在 _cursor(原 ) 后) 追加 )
+        this._snapshot();
+        this._atoms.splice(i, 0, '(', '-');
+        this._atoms.splice(this._cursor + 2, 0, ')');   // +2 因前面插了两个
+        this._cursor += 3;
+        return;
+      }
+      // i<0 括号不平衡（由 autoCloseParens/引擎兜底）：退化到分支3
+    }
+
+    // --- 分支1：光标紧邻数字/变量/常量/Ans 之前 ---
+    // 目标原子：光标在数字内(offset>0)→当前数字；否则 _cursor-1。
+    let targetIdx = -1;
+    if (this._offset > 0) {
+      targetIdx = this._cursor;            // 光标在数字内部，目标即此数字
+    } else if (this._cursor > 0) {
+      const left = this._atoms[this._cursor - 1];
+      if (isOperandAtom(left)) targetIdx = this._cursor - 1;
+    }
+    if (targetIdx >= 0) {
+      const t = this._atoms[targetIdx];
+      // 检测已包裹 (-t)：前两原子为 (,- 且后续对应 ) 紧跟
+      if (targetIdx >= 2 && this._atoms[targetIdx - 1] === '-' && this._atoms[targetIdx - 2] === '('
+          && this._atoms[targetIdx + 1] === ')') {
+        // 剥离 (,-,t,) → t。需保留 targetIdx 的值，删 (-1,-2) 与 (+1)
+        this._snapshot();
+        const val = t;
+        this._atoms.splice(targetIdx - 2, 3, val);     // 用 t 替换 (,-,t 三元
+        this._atoms.splice(targetIdx - 1, 1);            // 删随后的 )
+        this._cursor = targetIdx - 1; this._offset = 0;
+        return;
+      }
+      // 包裹 t → (,-,t,)。在 targetIdx 插 (,-，在 targetIdx+1 追加 )
+      this._snapshot();
+      this._atoms.splice(targetIdx, 0, '(', '-');
+      this._atoms.splice(targetIdx + 3, 0, ')');        // +2 因前面插了两个，再 +1 指向原 t 之后
+      // 光标落在 t 与 ) 之间
+      this._cursor = targetIdx + 3; this._offset = 0;
+      return;
+    }
+
+    // --- 分支3：左侧是运算符或空 → 插入 (-0)，光标在 0 与 ) 之间 ---
+    this._snapshot();
+    this._atoms.splice(this._cursor, 0, '(', '-', '0', ')');
+    this._cursor += 3;        // 在 0 之后、) 之前
+    this._offset = 0;
+  }
+}
+
+// 纯函数：补齐 atoms 中缺失的右括号（用于 = 提交前的容错）。只补 )，不插值。
+export function autoCloseParens(atoms) {
+  let depth = 0;
+  for (const a of atoms) {
+    if (a === '(') depth++;
+    else if (a === ')') depth = Math.max(0, depth - 1);
+  }
+  if (depth <= 0) return atoms.slice();
+  return [...atoms, ...Array(depth).fill(')')];
 }

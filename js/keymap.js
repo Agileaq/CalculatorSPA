@@ -20,14 +20,16 @@ export const ACTIONS = {
   left: { kind: 'left' }, right: { kind: 'right' },
   undo: { kind: 'undo' }, redo: { kind: 'redo' }, equals: { kind: 'equals' },
   deg: { kind: 'toggleAngle' }, shift: { kind: 'toggleShift' },
-  history: { kind: 'history' }, sto: { kind: 'sto' },
+  history: { kind: 'history' },
   varX: { kind: 'atom', payload: 'X' },
   math: { kind: 'math' },
   // Keys flanking MATH: history recall (∧ older, ∨ newer)
   mathUp: { kind: 'historyUp' }, mathDown: { kind: 'historyDown' },
-  fxs: { kind: 'placeholder' },
-  grp: { kind: 'placeholder' }, comma: { kind: 'placeholder' },
-  eng: { kind: 'placeholder' },
+  // function row 3 (重映射自原 FXs/GRP/,,/STO 占位键)
+  negate: { kind: 'toggleSign' },   // +/- 翻转符号
+  abs: { kind: 'atom', payload: 'abs(' },  // |x|
+  fact: { kind: 'atom', payload: '!' },     // x!
+  mod: { kind: 'atom', payload: 'Mod' },   // Mod (二元取模)
 };
 
 export const SHIFT_ACTIONS = {

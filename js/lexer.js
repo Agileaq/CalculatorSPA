@@ -2,6 +2,7 @@
 export const TOKEN_TYPES = {
   NUM: 'NUM', OP: 'OP', LPAREN: 'LPAREN', RPAREN: 'RPAREN',
   FUNC: 'FUNC', CONST: 'CONST', VAR: 'VAR', ANS: 'ANS', PERCENT: 'PERCENT',
+  FACT: 'FACT',
 };
 const T = TOKEN_TYPES;
 const FUNCS = {
@@ -19,12 +20,13 @@ function classify(atom) {
   if (atom === 'pi' || atom === 'e') return [{ type: T.CONST, value: atom }];
   if (atom === 'Ans') return [{ type: T.ANS }];
   if (atom === '%') return [{ type: T.PERCENT }];
-  if (atom === 'nCr' || atom === 'nPr') return [{ type: T.OP, value: atom }];
+  if (atom === '!') return [{ type: T.FACT }];
+  if (atom === 'nCr' || atom === 'nPr' || atom === 'Mod') return [{ type: T.OP, value: atom }];
   if (/^[A-Z]$/.test(atom)) return [{ type: T.VAR, value: atom }];
   throw new Error('Syntax Error');
 }
 
-const LEFT = new Set([T.NUM, T.RPAREN, T.CONST, T.VAR, T.ANS, T.PERCENT]);
+const LEFT = new Set([T.NUM, T.RPAREN, T.CONST, T.VAR, T.ANS, T.PERCENT, T.FACT]);
 const RIGHT = new Set([T.NUM, T.CONST, T.VAR, T.ANS, T.FUNC, T.LPAREN]);
 
 export function lex(atoms) {

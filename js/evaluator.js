@@ -17,6 +17,11 @@ function evalNode(node, ctx) {
     case 'var': return ctx.vars[node.name] ?? 0;
     case 'ans': return ctx.ans;
     case 'percent': return evalNode(node.operand, ctx) / 100;
+    case 'fact': {
+      const n = evalNode(node.operand, ctx);
+      if (!Number.isInteger(n) || n < 0 || n > 170) throw new CalcError('Math Error');
+      return factorial(n);
+    }
     case 'unary': return -evalNode(node.operand, ctx);
     case 'binary': {
       const a = evalNode(node.left, ctx), b = evalNode(node.right, ctx);
@@ -26,6 +31,7 @@ function evalNode(node, ctx) {
         case '*': return a * b;
         case '/': if (b === 0) throw new CalcError('Math Error'); return a / b;
         case '^': return Math.pow(a, b);
+        case 'Mod': if (b === 0) throw new CalcError('Math Error'); return a % b;
         case 'nCr': return nCr(a, b);
         case 'nPr': return nPr(a, b);
       }
