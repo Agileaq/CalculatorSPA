@@ -89,15 +89,17 @@ This `sawUpdate` flag (set when the banner shows) gates the reload — first ins
 
 `const CACHE = "calc-v8g";` in `sw.js` (and the `#version` badge text in `index.html`, and the `dev.html` label) is the version. **Bumping the `CACHE` string is what triggers the update** — the browser sees a byte-diff on `sw.js`. No `version.json`, no separate version file.
 
+**Standing decision:** always bump the human-readable version (`v8l` → `v8m`) and push after making a change — don't wait to be asked. The badge shows only the human version; the deployed commit SHA rides in the badge's `data-sha` attribute and is revealed by tapping the badge (`showToast(versionEl.dataset.sha)` in `app.js`).
+
 ### Auto-stamp: every push triggers the update banner (no manual bump needed)
 
 `.github/workflows/static.yml` has a **"Stamp commit SHA into cache + badge"** step that runs after checkout, before the Pages upload. On every push to `master` it rewrites three files **in the deployed artifact only** (the repo's working copy is NOT modified — the stamp lives in the workflow run, not in git):
 
 - `sw.js` `CACHE`: `"calc-v8g"` → `"calc-v8g-<7char-SHA>"` (e.g. `"calc-v8g-abcdef1"`).
-- `index.html` `#version`: `v8g` → `v8g · abcdef1`.
-- `dev.html` `#version`: `v8g · dev` → `v8g · abcdef1 · dev`.
+- `index.html` `#version`: `data-sha="dev"` → `data-sha="abcdef1"` (the visible text stays `v8g`).
+- `dev.html` `#version`: `data-sha="dev"` → `data-sha="abcdef1"` (the visible text stays `v8g · dev`).
 
-The stamp uses perl one-liners with **capture groups that preserve the human version** (`calc-([a-z0-9]+)` → `calc-$1-<SHA>`), so a future bump to `v9` stamps to `calc-v9-<SHA>`, not `calc-v8g-<SHA>`. It is **idempotent**: the `-` and ` · ` separators break the regex on an already-stamped string, so re-runs (e.g. workflow re-trigger) don't double-stamp.
+The stamp uses perl one-liners with **capture groups that preserve the human version** (`calc-([a-z0-9]+)` → `calc-$1-<SHA>`), so a future bump to `v9` stamps to `calc-v9-<SHA>`, not `calc-v8g-<SHA>`. It is **idempotent**: the badge regex only matches `data-sha="dev"`, so once stamped (to the SHA) a re-run no longer matches and can't double-stamp; the `-` in `CACHE` does the same.
 
 **Why this exists:** so every push reaches installed (Add-to-Home-Screen) PWAs without a manual `CACHE` bump. The byte-diff on `sw.js` (the SHA in `CACHE` changed) is what the browser's SW update detector keys on — the SHA is the per-commit cache key. The **human-readable version** (`v8g`, `v9`...) is still bumped **manually** for real releases; the SHA suffix is the automatic per-commit prompt.
 
@@ -107,8 +109,8 @@ The stamp uses perl one-liners with **capture groups that preserve the human ver
 
 1. Implement on the trunk (`js/`, `styles.css`, etc.) and verify via `dev.html` + `tests/test.html`.
 2. Bump `sw.js` `CACHE` to the new tag (e.g. `"calc-v9"`). NOTE: the workflow will further append `-<SHA>` at deploy time → `calc-v9-<SHA>`.
-3. Bump root `index.html` `#version` badge to the new label (e.g. `v9`). The workflow appends ` · <SHA>` → `v9 · <SHA>`.
-4. Bump `dev.html` version label (e.g. `v8g · dev` → `v9 · dev`). The workflow inserts the SHA → `v9 · <SHA> · dev`.
+3. Bump root `index.html` `#version` badge text to the new label (e.g. `v8g` → `v9`; leave `data-sha="dev"`). The workflow stamps `data-sha` → `data-sha="<SHA>"`; the visible text stays `v9`.
+4. Bump `dev.html` version label text (e.g. `v8g · dev` → `v9 · dev`; leave `data-sha="dev"`). The workflow stamps `data-sha` → `data-sha="<SHA>"`; the visible text stays `v9 · dev`.
 5. Commit and push — the Pages workflow deploys automatically, stamping the SHA. That's the entire release: no snapshot dir, no gate flip, no per-version copy.
 
 ### Patch releases (v9 → v9a) — same as a full release
@@ -116,8 +118,8 @@ The stamp uses perl one-liners with **capture groups that preserve the human ver
 There is no longer a distinction between "full" and "patch" releases at the directory level (there's only one directory). A **patch release** (v9 → **v9a**) is just another `CACHE` + badge bump:
 
 - `sw.js` `CACHE`: `"calc-v9"` → `"calc-v9a"` (workflow stamps → `"calc-v9a-<SHA>"`).
-- Root `index.html` `#version` badge: `v9` → `v9a` (workflow stamps → `v9a · <SHA>`).
-- `dev.html` label: `v9 · dev` → `v9a · dev` (workflow stamps → `v9a · <SHA> · dev`).
+- Root `index.html` `#version` badge text: `v9` → `v9a` (workflow stamps `data-sha` → `data-sha="<SHA>"`).
+- `dev.html` label text: `v9 · dev` → `v9a · dev` (workflow stamps `data-sha` → `data-sha="<SHA>"`).
 
 Rule of thumb: **the version tag is a cache-version string, not a directory.** Bump it for every real release, full or patch — the SHA suffix handles per-commit prompting in between.
 

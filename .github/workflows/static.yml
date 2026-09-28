@@ -37,13 +37,15 @@ jobs:
         # (the SW update-detection trigger) WITHOUT requiring a manual version bump.
         # The human-readable version (v8, v9...) is still bumped manually for real
         # releases; the SHA is the per-commit cache key that prompts installed PWAs.
+        # The badge itself displays only the human version; the SHA rides in the
+        # data-sha attribute (tap the badge to reveal it).
         run: |
           SHA="${GITHUB_SHA::7}"
           echo "GITHUB_SHA=${GITHUB_SHA}"
           echo "short SHA=${SHA}"
           perl -i -pe "s/const CACHE = \"calc-([a-z0-9]+)\";/const CACHE = \"calc-\$1-${SHA}\";/" sw.js
-          perl -i -pe "s|(<div id=\"version\">v[0-9a-z]+)(</div>)|\$1 · ${SHA}\$2|" index.html
-          perl -i -pe "s|(<div id=\"version\">v[0-9a-z]+) · dev(</div>)|\$1 · ${SHA} · dev\$2|" dev.html
+          perl -i -pe "s|(<div id=\"version\" data-sha=\")dev(\")|\$1${SHA}\$2|" index.html
+          perl -i -pe "s|(<div id=\"version\" data-sha=\")dev(\")|\$1${SHA}\$2|" dev.html
           echo "Stamped commit ${SHA}:"
           grep '^const CACHE' sw.js
           grep 'id="version"' index.html
@@ -67,7 +69,8 @@ jobs:
           # Hard assertions: if the stamp did not take, fail loudly (previous runs
           # masked a silent failure green with a grep that always matched).
           grep -q "^const CACHE = \"calc-[a-z0-9]*-${SHA}\";$" sw.js || { echo "STAMP FAILED sw.js"; exit 1; }
-          grep -q "v[a-z0-9]* · ${SHA}" index.html || { echo "STAMP FAILED index.html"; exit 1; }
+          grep -q "id=\"version\" data-sha=\"${SHA}\"" index.html || { echo "STAMP FAILED index.html"; exit 1; }
+          grep -q "id=\"version\" data-sha=\"${SHA}\"" dev.html || { echo "STAMP FAILED dev.html"; exit 1; }
           echo "STAMP OK"
       - name: Setup Pages
         uses: actions/configure-pages@v5

@@ -644,6 +644,10 @@ tapeScroll.addEventListener('wheel', (e) => {
 badgeEl.addEventListener('click', () => dispatch('deg'));
 // Language switch: cycle to the next official UN language
 langEl.addEventListener('click', () => { cycleLocale(); applyLocale(); });
+// Version badge: the label shows only the human version; tap reveals the deployed
+// commit SHA (stamped into data-sha by the Pages workflow).
+const versionEl = $('#version');
+versionEl.addEventListener('click', () => showToast(versionEl.dataset.sha || 'dev'));
 // MATH close
 document.querySelector('#math-close').addEventListener('click', () => { mathPanel.hidden = true; });
 // Physical keyboard
