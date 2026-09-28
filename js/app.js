@@ -406,26 +406,23 @@ function dispatch(id) {
 }
 
 // Button clicks
-// Keypad input: pointerup (not click). Mobile browsers synthesize `click`
-// after touchend with throttling/dedup that can DROP rapid taps (symptom:
-// fast-typing 123456789 yields 1234589; fast-tapping the same key 10× yields 9).
-// pointerup fires immediately per touch and is not dropped. A physical
-// keyboard shows no loss, confirming the JS path is fast enough — the loss
-// is purely mobile click-suppression. Guard against drag-misfires: only
-// dispatch when pointerup lands on the same key that pointerdown pressed.
+// Keypad input: dispatch on pointerdown, NOT click or pointerup.
+// `click` is synthesized after touchend with throttling/dedup that drops rapid
+// taps (123456789 → 1234589). Registering on pointerup was more reliable but
+// still dropped keys when two fingers land nearly together: a single shared
+// "pressed key" slot gets clobbered by the second pointerdown, so the first
+// pointerup no longer matches and is discarded; iOS can also fire
+// pointercancel on the first pointer when a second lands, losing its pointerup
+// entirely. Dispatching the moment the touch lands registers every key
+// independently of other pointers, of releases, and of cancels — no key can be
+// lost. The keypad does not scroll, so there is no drag-to-cancel to preserve.
+// A physical keyboard never dropped keys, confirming the JS path is fast enough.
 const keypadEl = document.querySelector('#keypad');
-let pressedKey = null;
 keypadEl.addEventListener('pointerdown', (e) => {
-  if (e.pointerType === 'mouse' && e.button !== 0) { pressedKey = null; return; }
-  pressedKey = e.target.closest('button[data-id]');
+  if (e.pointerType === 'mouse' && e.button !== 0) return;   // ignore right/middle mouse
+  const btn = e.target.closest('button[data-id]');
+  if (btn) dispatch(btn.dataset.id);
 });
-keypadEl.addEventListener('pointerup', (e) => {
-  if (e.pointerType === 'mouse' && e.button !== 0) { pressedKey = null; return; }
-  const upBtn = e.target.closest('button[data-id]');
-  if (pressedKey && upBtn === pressedKey) dispatch(upBtn.dataset.id);
-  pressedKey = null;
-});
-keypadEl.addEventListener('pointercancel', () => { pressedKey = null; });
 // Magnifier loupe: while dragging on touch/pen, float a magnified horizontal
 // window directly above the current input line (.h-current .h-expr), centered
 // on the cursor (not the finger) so the magnified cursor overlays the real
