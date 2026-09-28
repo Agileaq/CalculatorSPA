@@ -62,10 +62,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 #calc.tape-expanded #tape-list .h-current { display: none; }
 
 #keypad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px;
-  background: #111; padding: 1px 1px 6px; }
+  background: #111; padding: 1px 1px 6px; touch-action: none; }
+/* touch-action: none (was manipulation): the keypad never scrolls, and
+   disabling all browser gesture handling on it stops the iOS double-tap-zoom
+   recognizer from deferring rapid taps (WebKit bug 246313). */
 .key { border: none; background: var(--key); color: var(--text); font-size: 22px;
   padding: 16px 0; cursor: pointer; user-select: none; transition: background .08s;
-  position: relative; touch-action: manipulation; }
+  position: relative; touch-action: none; }
 .key .second { position: absolute; top: 4px; left: 6px; font-size: 11px; color: var(--yellow); }
 .key:active { background: #333; }
 .key.fn { font-size: 15px; color: var(--muted); background: var(--panel); }

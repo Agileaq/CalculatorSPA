@@ -406,21 +406,41 @@ function dispatch(id) {
 }
 
 // Button clicks
-// Keypad input: dispatch on pointerdown, NOT click or pointerup.
-// `click` is synthesized after touchend with throttling/dedup that drops rapid
-// taps (123456789 → 1234589). Registering on pointerup was more reliable but
-// still dropped keys when two fingers land nearly together: a single shared
-// "pressed key" slot gets clobbered by the second pointerdown, so the first
-// pointerup no longer matches and is discarded; iOS can also fire
-// pointercancel on the first pointer when a second lands, losing its pointerup
-// entirely. Dispatching the moment the touch lands registers every key
-// independently of other pointers, of releases, and of cancels — no key can be
-// lost. The keypad does not scroll, so there is no drag-to-cancel to preserve.
-// A physical keyboard never dropped keys, confirming the JS path is fast enough.
+// Keypad input: register on touchstart AND call preventDefault().
+//
+//  1. Root cause of fast-tap drops: on iOS, when the app is installed to the
+//     Home Screen (standalone PWA), a rapid double-tap makes the OS double-tap
+//     zoom gesture recognizer defer/suppress the SECOND pointerdown/touchstart
+//     (WebKit bug 246313). Pressing 4+4+4+… therefore drops keys, showing up as
+//     `44` (a lost +) or `++` (a lost 4). It never happens in a normal Safari
+//     tab or with a physical keyboard. preventDefault() on touchstart tells
+//     WebKit the touch is not part of a browser gesture, so the recognizer no
+//     longer defers it and every tap is delivered. (touch-action: none on the
+//     keys backs this up.)
+//  2. touchstart is the lowest-level touch event and each new finger fires its
+//     own touchstart with its own changedTouches entry, so overlapping taps
+//     cannot clobber one another (unlike a single shared pressed-key slot).
+//  3. `click` is synthesized after touchend with throttling/dedup that also
+//     drops rapid taps, so it is not used.
+//
+// Mouse and pen emit no touchstart; keep pointerdown for them, skipping
+// pointerType 'touch' so a finger tap is not registered twice.
 const keypadEl = document.querySelector('#keypad');
+const keyBtnFor = (el) => (el && el.closest ? el.closest('button[data-id]') : null);
+
+keypadEl.addEventListener('touchstart', (e) => {
+  e.preventDefault();                    // defeat iOS double-tap gesture deferral
+  for (const touch of e.changedTouches) {
+    const btn = keyBtnFor(touch.target)
+      || keyBtnFor(document.elementFromPoint(touch.clientX, touch.clientY));
+    if (btn) dispatch(btn.dataset.id);
+  }
+}, { passive: false });
+
 keypadEl.addEventListener('pointerdown', (e) => {
-  if (e.pointerType === 'mouse' && e.button !== 0) return;   // ignore right/middle mouse
-  const btn = e.target.closest('button[data-id]');
+  if (e.pointerType === 'touch') return;                       // handled by touchstart
+  if (e.pointerType === 'mouse' && e.button !== 0) return;     // ignore right/middle mouse
+  const btn = keyBtnFor(e.target);
   if (btn) dispatch(btn.dataset.id);
 });
 // Magnifier loupe: while dragging on touch/pen, float a magnified horizontal
